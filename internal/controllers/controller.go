@@ -16,22 +16,27 @@ type Controller struct{}
 func (t Controller) Index(c *gin.Context) {
 	acc := c.Query("account")
 	user := &db.User{Account: acc}
-	user.GetInfo()
-	info := &db.Info{}
-	userRelationship := &db.UserRelationships{UserAccount: acc}
-	friends := userRelationship.GetFriend()
-	var friendsInfo []*db.User
-	for i := 0; i < len(friends); i++ {
-		userTemp := &db.User{Account: friends[i].FriendAccount}
-		userTemp.GetInfo()
-		friendsInfo = append(friendsInfo, userTemp)
+	if user.IsExist2() {
+		user.GetInfo()
+		info := &db.Info{}
+		userRelationship := &db.UserRelationships{UserAccount: acc}
+		friends := userRelationship.GetFriend()
+		var friendsInfo []*db.User
+		for i := 0; i < len(friends); i++ {
+			userTemp := &db.User{Account: friends[i].FriendAccount}
+			userTemp.GetInfo()
+			friendsInfo = append(friendsInfo, userTemp)
+		}
+		c.HTML(http.StatusOK, "main/index.html", gin.H{
+			"img":       user.Img,
+			"username":  user.Username,
+			"infoArr":   info.GetAll(acc),
+			"friendArr": friendsInfo,
+			"account":   acc,
+		})
+	} else {
+		c.Redirect(http.StatusMovedPermanently, "/login")
 	}
-	c.HTML(http.StatusOK, "main/index.html", gin.H{
-		"img":       user.Img,
-		"username":  user.Username,
-		"infoArr":   info.GetAll(acc),
-		"friendArr": friendsInfo,
-	})
 }
 
 func (t Controller) Ws(c *gin.Context) {
@@ -45,31 +50,15 @@ func (t Controller) Login(c *gin.Context) {
 func (t Controller) LoginP(c *gin.Context) {
 	acc := c.PostForm("account")
 	user := &db.User{Account: acc, Password: c.PostForm("password")}
-	_, ok := wsg.Hub.ClientsMap[acc]
 	if user.IsCorrect() {
-		if ok {
-			c.JSON(http.StatusOK, gin.H{
-				"status": "2",
-			})
-		} else {
-			c.JSON(http.StatusOK, gin.H{
-				"status": "1",
-			})
-		}
+		c.JSON(http.StatusOK, gin.H{
+			"status": "1",
+		})
 	} else {
 		c.JSON(http.StatusOK, gin.H{
 			"status": "0",
 		})
 	}
-}
-
-func (t Controller) Quit(c *gin.Context) {
-	acc := c.PostForm("account")
-	client, ok := wsg.Hub.ClientsMap[acc]
-	if ok {
-		client.Hub.Unregister <- client
-	}
-	c.JSON(http.StatusOK, nil)
 }
 
 func (t Controller) Register(c *gin.Context) {
@@ -150,8 +139,10 @@ func (t Controller) AddFriend(c *gin.Context) {
 			} else {
 				if info.IsFinish() {
 					info.Add()
+					info.GetId()
 					c.JSON(http.StatusOK, gin.H{
 						"status": "1",
+						"infoId": info.Id,
 					})
 				} else {
 					c.JSON(http.StatusOK, gin.H{
@@ -206,6 +197,7 @@ func (t Controller) GetChatMsg(c *gin.Context) {
 		"senderImg":        senderUser.Img,
 		"receiverImg":      receiverUser.Img,
 		"receiverUsername": receiverUser.Username,
+		"senderUsername":   senderUser.Username,
 	})
 }
 
@@ -214,13 +206,16 @@ func (t Controller) GetWorldRoomMsg(c *gin.Context) {
 	msgArr := groupMessage.GetMessage()
 	msgArrLen := len(msgArr)
 	var imgArr []string
+	var nameArr []string
 	for i := 0; i < msgArrLen; i++ {
 		senderUser := &db.User{Account: msgArr[i].SenderAccount}
 		senderUser.GetInfo()
 		imgArr = append(imgArr, senderUser.Img)
+		nameArr = append(nameArr, senderUser.Username)
 	}
 	c.JSON(http.StatusOK, gin.H{
-		"msgWorldRoom": msgArr,
-		"imgWorldRoom": imgArr,
+		"msgWorldRoom":  msgArr,
+		"imgWorldRoom":  imgArr,
+		"nameWorldRoom": nameArr,
 	})
 }

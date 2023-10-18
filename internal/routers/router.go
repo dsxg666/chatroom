@@ -16,7 +16,6 @@ func RouterInit(r *gin.Engine) {
 
 		// POST
 		router.POST("/login", controllers.Controller{}.LoginP)
-		router.POST("/quit", controllers.Controller{}.Quit)
 		router.POST("/register", controllers.Controller{}.RegisterP)
 		router.POST("/isExist", controllers.Controller{}.IsExist)
 		router.POST("/updateName", controllers.Controller{}.UpdateName)

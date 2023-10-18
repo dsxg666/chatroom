@@ -3,39 +3,32 @@ package ws
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/dsxg666/chatroom/internal/db"
+	"github.com/gorilla/websocket"
 	"log"
 	"net/http"
 	"time"
-
-	"github.com/dsxg666/chatroom/internal/db"
-	"github.com/gorilla/websocket"
 )
 
 type Message struct {
-	Message   string `json:"Message"`
-	Sender    string `json:"Sender"`
-	Receiver  string `json:"Receiver"`
-	SenderImg string `json:"SenderImg"`
-	Time      string `json:"Time"`
+	Message          string `json:"Message"`
+	Sender           string `json:"Sender"`
+	SenderImg        string `json:"SenderImg"`
+	SenderUsername   string `json:"SenderUsername"`
+	Receiver         string `json:"Receiver"`
+	ReceiverImg      string `json:"ReceiverImg"`
+	ReceiverUsername string `json:"ReceiverUsername"`
+	Time             string `json:"Time"`
+	Type             string `json:"Type"`
+	InfoId           string `json:"InfoId"`
 }
-
-const (
-	// Time allowed to write a message to the peer.
-	writeWait = 10 * time.Second
-
-	// Time allowed to read the next pong message from the peer.
-	pongWait = 60 * time.Second
-
-	// Send pings to peer with this period. Must be less than pongWait.
-	pingPeriod = (pongWait * 9) / 10
-
-	// Maximum message size allowed from peer.
-	maxMessageSize = 512
-)
 
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
+	CheckOrigin: func(r *http.Request) bool {
+		return true
+	},
 }
 
 type Client struct {
@@ -46,12 +39,6 @@ type Client struct {
 }
 
 func (c *Client) ReadMsg() {
-	defer func() {
-		c.Conn.Close()
-	}()
-	c.Conn.SetReadLimit(maxMessageSize)
-	c.Conn.SetReadDeadline(time.Now().Add(pongWait))
-	c.Conn.SetPongHandler(func(string) error { c.Conn.SetReadDeadline(time.Now().Add(pongWait)); return nil })
 	for {
 		_, message, err := c.Conn.ReadMessage()
 		if err != nil {
@@ -66,28 +53,28 @@ func (c *Client) ReadMsg() {
 			fmt.Println("反序列化失败:", err)
 			return
 		}
-		if msgObj.Receiver == "WorldRoom" {
-			groupMessage := &db.GroupMessage{SenderAccount: msgObj.Sender, Message: msgObj.Message}
-			groupMessage.Add()
-			c.Hub.Broadcast <- msgObj
-		} else {
-			privateMsg := &db.PrivateMessage{SenderAccount: msgObj.Sender, ReceiverAccount: msgObj.Receiver, Message: msgObj.Message}
-			privateMsg.Add()
+		if msgObj.Type == "Message" {
+			if msgObj.Receiver == "WorldRoom" {
+				groupMessage := &db.GroupMessage{SenderAccount: msgObj.Sender, Message: msgObj.Message}
+				groupMessage.Add()
+				c.Hub.Broadcast <- msgObj
+			} else {
+				privateMsg := &db.PrivateMessage{SenderAccount: msgObj.Sender, ReceiverAccount: msgObj.Receiver, Message: msgObj.Message}
+				privateMsg.Add()
+				c.Hub.Private <- msgObj
+			}
+		} else if msgObj.Type == "FriendRequest" {
+			c.Hub.FriendRequest <- msgObj
+		} else if msgObj.Type == "AddFriend" {
 			c.Hub.Private <- msgObj
 		}
 	}
 }
 
 func (c *Client) WriteMsg() {
-	ticker := time.NewTicker(pingPeriod)
-	defer func() {
-		ticker.Stop()
-		c.Conn.Close()
-	}()
 	for {
 		select {
 		case msgObj, ok := <-c.Send:
-			c.Conn.SetWriteDeadline(time.Now().Add(writeWait))
 			if !ok {
 				c.Conn.WriteMessage(websocket.CloseMessage, []byte{})
 				return
@@ -97,10 +84,25 @@ func (c *Client) WriteMsg() {
 				return
 			}
 
-			senderUser := &db.User{Account: msgObj.Sender}
-			senderUser.GetInfo()
-			msgObj.SenderImg = senderUser.Img
-			msgObj.Time = time.Now().Format("2006-01-02 15:04")
+			if msgObj.Type == "Message" {
+				senderUser := &db.User{Account: msgObj.Sender}
+				senderUser.GetInfo()
+				msgObj.SenderImg = senderUser.Img
+				msgObj.SenderUsername = senderUser.Username
+				msgObj.Time = time.Now().Format("2006-01-02 15:04")
+			} else if msgObj.Type == "FriendRequest" {
+
+			} else if msgObj.Type == "AddFriend" {
+				senderUser := &db.User{Account: msgObj.Sender}
+				senderUser.GetInfo()
+				msgObj.SenderImg = senderUser.Img
+				msgObj.SenderUsername = senderUser.Username
+				receiverUser := &db.User{Account: msgObj.Receiver}
+				receiverUser.GetInfo()
+				msgObj.ReceiverImg = receiverUser.Img
+				msgObj.ReceiverUsername = receiverUser.Username
+			}
+
 			jsonMsg, err := json.Marshal(msgObj)
 			if err != nil {
 				fmt.Println("JSON serialization error:", err)
@@ -109,11 +111,6 @@ func (c *Client) WriteMsg() {
 			w.Write(jsonMsg)
 
 			if err := w.Close(); err != nil {
-				return
-			}
-		case <-ticker.C:
-			c.Conn.SetWriteDeadline(time.Now().Add(writeWait))
-			if err := c.Conn.WriteMessage(websocket.PingMessage, nil); err != nil {
 				return
 			}
 		}

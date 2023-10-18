@@ -22,6 +22,15 @@ func (i *Info) Add() {
 	}
 }
 
+func (i *Info) GetId() {
+	stmt, err := dbg.MySqlConn.Prepare("select id from info where sender_account = ? and receiver_account = ? and finish = '0'")
+	defer stmt.Close()
+	err = stmt.QueryRow(i.SenderAccount, i.ReceiverAccount).Scan(&i.Id)
+	if err != nil {
+		fmt.Println(err)
+	}
+}
+
 func (i *Info) GetAll(receiver string) []*Info {
 	var arr []*Info
 	rows, err := dbg.MySqlConn.Query("select * from info where receiver_account = ? and `finish` = 0 order by id desc", receiver)

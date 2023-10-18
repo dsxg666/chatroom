@@ -17,7 +17,11 @@
         <script src="/static/js/message.js"></script>
         <style>
             .using {
-                color: rgb(101, 219, 121);
+                color: blueviolet;
+            }
+
+            .boxUsing {
+                background-color: pink;
             }
 
             svg {
@@ -29,6 +33,10 @@
             .hit {
                 cursor: pointer;
             }
+
+            .hidden {
+                display: none;
+            }
         </style>
         <script>
             let isLogin = sessionStorage.getItem('isLogin');
@@ -38,6 +46,7 @@
         </script>
     </head>
     <body>
+    <audio id="ringtone" class="hidden" src="/static/audio/notice.mp3" preload="auto"></audio>
     <section style="border: 1px solid darkgray;border-radius: 15px;width: 90%;height: 80%">
         <div class="container py-5" style="height: 100%;">
             <div class="row" style="height: 100%;">
@@ -58,7 +67,7 @@
                         <div class="tab-pane fade pages show active" id="msgPage" role="tabpanel">
                             <ul id="msgPageUl" class="list-unstyled mb-0"
                                 style="position: absolute;right: 0; left: 0;overflow: auto; max-height: 100%;">
-                                <li id="liWorldRoom" class="p-2" onclick="showWorldRoom()">
+                                <li id="liWorldRoom" class="p-2" style="border-radius: 10px" onclick="showWorldRoom()">
                                     <div class="d-flex justify-content-between">
                                         <div class="d-flex flex-row">
                                             <div>
@@ -73,7 +82,8 @@
                                         </div>
                                         <div class="pt-1">
                                             <p class="small text-muted mb-1" id="timeWorldRoom"></p>
-                                            <span class="badge bg-danger rounded-pill float-end"></span>
+                                            <span id="unreadNumWorldRoom"
+                                                  class="badge bg-danger rounded-pill float-end"></span>
                                         </div>
                                     </div>
                                 </li>
@@ -84,7 +94,7 @@
                                 <input type="text" class="form-control" id="friendAcc" placeholder="好友账号">
                                 <button class="btn btn-outline-secondary" type="button" id="addFriend">添加</button>
                             </div>
-                            <ul class="list-unstyled mb-0"
+                            <ul id="friendPageUl" class="list-unstyled mb-0"
                                 style="position: absolute;right: 0; left: 0;overflow: auto; max-height: 100%;">
                                 {{range $key, $value := .friendArr}}
                                     <li class="p-2" onclick="showMsg({{$value.Account}})">
@@ -106,7 +116,7 @@
                             </ul>
                         </div>
                         <div class="tab-pane fade pages" id="infoPage" role="tabpanel">
-                            <ul class="list-unstyled mb-0"
+                            <ul id="infoPageUl" class="list-unstyled mb-0"
                                 style="position: absolute;right: 0; left: 0;overflow: auto; max-height: 100%;">
                                 {{range $key, $value := .infoArr}}
                                     <li class="p-2">
@@ -178,9 +188,9 @@
                     <div id="editFrame" style="flex: 1;display: none !important;"
                          class="d-flex justify-content-start align-items-center pe-3 pt-3 mt-2">
                         <span class="material-icons" id="showEmojis"
-                              style="font-size: 35px;user-select: none;margin-right: 10px">emoji_emotions</span>
+                              style="font-size: 35px;user-select: none;margin-right: 10px;">emoji_emotions</span>
                         <span class="material-icons"
-                              style="font-size: 35px;user-select: none;margin-right: 15px">folder</span>
+                              style="font-size: 35px;user-select: none;margin-right: 15px;">folder</span>
                         <div id="emojiContainer" class="position-absolute" style="display: none;">
                             <div class="card">
                                 <div class="card-body">
@@ -333,6 +343,9 @@
                     <h4 class="modal-title">设置</h4>
                 </div>
                 <div class="modal-body">
+                    <h6>我的账号：{{.account}}</h6>
+                    <h6>我的昵称：{{.username}}</h6>
+                    <br>
                     <div>
                         <h6>修改头像：</h6>
                         <div class="container">
@@ -347,7 +360,7 @@
                     </div>
                     <br>
                     <div>
-                        <h6>当前昵称：{{.username}}</h6>
+                        <h6>修改昵称：</h6>
                         <input type="text" class="form-control" id="newName" placeholder="输入你的新昵称"><br>
                         <div class="text-center">
                             <button class="btn btn-primary" id="updateName">修改</button>
@@ -374,59 +387,160 @@
             conn = new WebSocket("ws://" + document.location.host + "/ws?account=" + acc);
             conn.onmessage = function (evt) {
                 let msgObj = JSON.parse(evt.data);
-                let temp = $(".smallMsgBox").is('*');
-                if (temp) {
-                    if (msgObj.Sender === acc) {
-                        let msgTemp = msgObj.Message;
-                        let msg = emojiShowFunc(msgTemp);
-                        if (msgTemp.length > 5) {
-                            msgTemp = msgTemp.substring(0, 5) + "...";
-                        }
-                        let msgRightHtml = `
+                console.log(msgObj);
+                if (msgObj.Type === "Message") {
+                    let temp = $(".boxAlreadyShow").is('*');
+                    if (temp) {
+                        if (acc === msgObj.Sender) {
+                            let msgTemp = msgObj.Message;
+                            let msg = emojiShowFunc(msgTemp);
+                            if (msgTemp.length > 5) {
+                                msgTemp = msgTemp.substring(0, 5) + "...";
+                            }
+                            let down = {{.username}} +" | " + msgObj.Time
+                            let msgRightHtml = `
                        <li class="d-flex flex-row justify-content-end">
                             <div>
                                 <p class="small p-2 me-3 mb-1 text-black rounded-3" style="background-color: rgb(169, 234, 122)">
                                     ${msg}
                                 </p>
                                 <p class="small me-3 mb-3 rounded-3 text-muted">
-                                    ${msgObj.Time}
+                                    ${down}
                                 </p>
                             </div>
                             <img src="${msgObj.SenderImg}" style="width: 45px; height: 45px;">
                        </li>
             `;
-                        msgFrame.append(msgRightHtml);
-                        msgFrame.scrollTop(msgFrame.prop("scrollHeight"));
-                        $("#time" + msgObj.Receiver).text(msgObj.Time);
-                        $("#msg" + msgObj.Receiver).text(msgTemp);
-                    } else {
-                        let msgTemp = msgObj.Message;
-                        let msg = emojiShowFunc(msgTemp);
-                        if (msgTemp.length > 5) {
-                            msgTemp = msgTemp.substring(0, 5) + "...";
-                        }
-                        let msgLeftHtml = `
+                            msgFrame.append(msgRightHtml);
+                            msgFrame.scrollTop(msgFrame.prop("scrollHeight"));
+                            $("#time" + msgObj.Receiver).text(msgObj.Time);
+                            $("#msg" + msgObj.Receiver).text(msgTemp);
+                        } else if (acc === msgObj.Receiver && msgFrame.attr("data-remark") === msgObj.Sender || "WorldRoom" === msgFrame.attr("data-remark") && msgObj.Receiver === "WorldRoom") {
+                            // 如果当前页面是发送者的页面，且正在该窗口
+                            let msgTemp = msgObj.Message;
+                            let msg = emojiShowFunc(msgTemp);
+                            if (msgTemp.length > 5) {
+                                msgTemp = msgTemp.substring(0, 5) + "...";
+                            }
+                            let down = msgObj.SenderUsername + " | " + msgObj.Time
+                            let msgLeftHtml = `
                         <li class="d-flex flex-row justify-content-start">
                             <img src="${msgObj.SenderImg}" style="width: 45px; height: 45px;">
                             <div>
-                                <p class="small p-2 ms-3 mb-1 text-black rounded-3" style="background-color: rgb(225, 224, 223);">
+                                <p class="small p-2 ms-3 mb-1 text-black rounded-3" style="background-color: lightblue;">
                                     ${msg}
                                 </p>
                                 <p class="small ms-3 mb-3 rounded-3 text-muted float-end">
-                                    ${msgObj.Time}
+                                    ${down}
                                 </p>
                             </div>
                         </li>
             `;
-                        msgFrame.append(msgLeftHtml);
-                        msgFrame.scrollTop(msgFrame.prop("scrollHeight"));
-                        if (msgObj.Receiver === "WorldRoom") {
-                            $("#timeWorldRoom").text(msgObj.time);
-                            $("#msgWorldRoom").text(msgTemp);
-                        } else {
-                            $("#time" + msgObj.Sender).text(msgObj.Time);
-                            $("#msg" + msgObj.Sender).text(msgTemp);
+                            msgFrame.append(msgLeftHtml);
+                            msgFrame.scrollTop(msgFrame.prop("scrollHeight"));
+                            if (msgObj.Receiver === "WorldRoom") {
+                                $("#timeWorldRoom").text(msgObj.time);
+                                $("#msgWorldRoom").text(msgTemp);
+                            } else {
+                                $("#time" + msgObj.Sender).text(msgObj.Time);
+                                $("#msg" + msgObj.Sender).text(msgTemp);
+                            }
+                        } else if ("WorldRoom" !== msgFrame.attr("data-remark") && msgObj.Receiver === "WorldRoom") {
+                            // 收到世界群聊消息时不在该窗口
+                            document.getElementById('ringtone').play();
+                            let unreadNum = $("#unreadNumWorldRoom");
+                            if (unreadNum.text() === "") {
+                                unreadNum.text(1);
+                            } else {
+                                let str = unreadNum.text();
+                                let num = parseInt(str) + 1;
+                                unreadNum.text(num);
+                            }
+                        } else if (acc === msgObj.Receiver && msgFrame.attr("data-remark") !== msgObj.Sender) {
+                            // 收到好友消息时不在该窗口
+                            document.getElementById('ringtone').play();
+                            let unreadNum = $("#unreadNum" + msgObj.Sender);
+                            if (unreadNum.text() === "") {
+                                unreadNum.text(1);
+                            } else {
+                                let str = unreadNum.text();
+                                let num = parseInt(str) + 1;
+                                unreadNum.text(num);
+                            }
                         }
+                    }
+                } else if (msgObj.Type === "FriendRequest") {
+                    document.getElementById('ringtone').play();
+                    $.message({
+                        message: '您有新的好友请求。',
+                        type: 'success'
+                    });
+                    let htmlTemp = `
+                    <li class="p-2">
+                                        <div id="info"
+                                             style="padding: 10px;border: 1px solid darkgray;border-radius: 15px;">
+                                            <div class="row">
+                                                <div class="col h5">
+                                                    来自 ${msgObj.Sender} 的加好友请求
+                                                </div>
+                                            </div>
+                                            <div class="row">
+                                                <div class="col">
+                                                    <button type="button"
+                                                            onclick="agreeReq({value1: ${msgObj.InfoId}, value2: ${msgObj.Sender}, value3: ${msgObj.Receiver}, value4: $(this)})"
+                                                            class="btn btn-success">同意
+                                                    </button>
+                                                </div>
+                                                <div class="col">
+                                                    <button type="button"
+                                                            onclick="rejectReq({value1: ${msgObj.InfoId}, value2: $(this)})"
+                                                            class="btn btn-danger">拒绝
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </li>
+                    `;
+                    $("#infoPageUl").append(htmlTemp);
+                } else if (msgObj.Type === "AddFriend") {
+                    if (acc === msgObj.Sender) {
+                        let htmlTemp = `
+                    <li class="p-2" onclick="showMsg(${msgObj.Receiver})">
+                                        <div class="d-flex justify-content-between">
+                                            <div class="d-flex flex-row">
+                                                <div>
+                                                    <img src="${msgObj.ReceiverImg}" alt="avatar"
+                                                         class="d-flex align-self-center me-3" width="50px"
+                                                         height="50px">
+                                                </div>
+                                                <div class="pt-1">
+                                                    <p class="fw-bold mb-0"
+                                                       style="margin-top: 8px">${msgObj.ReceiverUsername}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </li>
+                    `;
+                        $("#friendPageUl").append(htmlTemp);
+                    } else if (acc === msgObj.Receiver) {
+                        let htmlTemp = `
+                    <li class="p-2" onclick="showMsg(${msgObj.Sender})">
+                                        <div class="d-flex justify-content-between">
+                                            <div class="d-flex flex-row">
+                                                <div>
+                                                    <img src="${msgObj.SenderImg}" alt="avatar"
+                                                         class="d-flex align-self-center me-3" width="50px"
+                                                         height="50px">
+                                                </div>
+                                                <div class="pt-1">
+                                                    <p class="fw-bold mb-0"
+                                                       style="margin-top: 8px">${msgObj.SenderUsername}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </li>
+                    `;
+                        $("#friendPageUl").append(htmlTemp);
                     }
                 }
             };
@@ -434,10 +548,11 @@
 
         document.getElementById("inputFrame").addEventListener("keyup", function (event) {
             if (event.key === "Enter") {
-                const message = {
+                let message = {
                     Message: inputFrame.val(),
                     Sender: acc,
                     Receiver: msgFrame.attr("data-remark"),
+                    Type: "Message",
                 };
                 conn.send(JSON.stringify(message));
                 this.value = ""; // 清空输入框
@@ -446,32 +561,45 @@
     </script>
     <script>
         function showWorldRoom() {
+            $('#msgPageUl li').each(function () {
+                let id = $(this).attr('id');
+
+                if (id === "liWorldRoom") {
+                    $(this).addClass("boxUsing");
+                } else {
+                    $(this).removeClass("boxUsing");
+                }
+            });
             $.ajax({
                 url: "/getWorldRoomMsg",
                 method: "post",
                 success: function (response) {
+                    $("#unreadNumWorldRoom").text("");
                     let msgFrame = $("#msgFrame");
                     msgFrame.empty();
-                    let msgWorldRoom = response["msgWorldRoom"];
-                    let len = msgWorldRoom.length;
-                    let imgWorldRoom = response["imgWorldRoom"];
-                    let originalStr = msgWorldRoom[len - 1].CreatedAt;
+
+                    let msgs = response["msgWorldRoom"];
+                    let len = msgs.length;
+                    let imgs = response["imgWorldRoom"];
+                    let names = response["nameWorldRoom"];
+
+                    let originalStr = msgs[len - 1].CreatedAt;
                     let resArr = originalStr.split("T");
                     let finalIndex = resArr[1].length - 4;
                     let finalArr = resArr[0] + " " + resArr[1].substring(0, finalIndex);
-                    let msgHtmlMsg = msgWorldRoom[len - 1].Message;
+                    let msgHtmlMsg = msgs[len - 1].Message;
                     if (msgHtmlMsg.length > 5) {
-                        msgHtmlMsg = msgWorldRoom[len - 1].Message.substring(0, 5) + "...";
+                        msgHtmlMsg = msgs[len - 1].Message.substring(0, 5) + "...";
                     }
                     $("#timeWorldRoom").text(finalArr);
                     $("#msgWorldRoom").text(msgHtmlMsg);
                     for (let i = 0; i < len; i++) {
-                        if (msgWorldRoom[i].SenderAccount === acc) {
-                            let originalStr = msgWorldRoom[i].CreatedAt;
+                        if (msgs[i].SenderAccount === acc) {
+                            let originalStr = msgs[i].CreatedAt;
                             let resArr = originalStr.split("T");
                             let finalIndex = resArr[1].length - 4;
-                            let finalStr = resArr[0] + " " + resArr[1].substring(0, finalIndex);
-                            let msgTemp = msgWorldRoom[i].Message;
+                            let finalStr = names[i] + " | " + resArr[0] + " " + resArr[1].substring(0, finalIndex);
+                            let msgTemp = msgs[i].Message;
                             let msg = emojiShowFunc(msgTemp);
                             let msgRightHtml = `
                        <li class="d-flex flex-row justify-content-end">
@@ -483,22 +611,22 @@
                                     ${finalStr}
                                 </p>
                             </div>
-                            <img src="${imgWorldRoom[i]}" style="width: 45px;height: 45px;border-radius: 8px;user-select: none">
+                            <img src="${imgs[i]}" style="width: 45px;height: 45px;border-radius: 8px;user-select: none">
                         </li>
             `;
                             msgFrame.append(msgRightHtml);
                         } else {
-                            let originalStr = msgWorldRoom[i].CreatedAt;
+                            let originalStr = msgs[i].CreatedAt;
                             let resArr = originalStr.split("T");
                             let finalIndex = resArr[1].length - 4;
-                            let finalStr = resArr[0] + " " + resArr[1].substring(0, finalIndex);
-                            let msgTemp = msgWorldRoom[i].Message;
+                            let finalStr = names[i] + " | " + resArr[0] + " " + resArr[1].substring(0, finalIndex);
+                            let msgTemp = msgs[i].Message;
                             let msg = emojiShowFunc(msgTemp);
                             let msgLeftHtml = `
                         <li class="d-flex flex-row justify-content-start">
-                            <img src="${imgWorldRoom[i]}" style="width: 45px;height: 45px;border-radius: 8px;user-select: none">
+                            <img src="${imgs[i]}" style="width: 45px;height: 45px;border-radius: 8px;user-select: none">
                             <div>
-                                <p class="small p-2 ms-3 mb-1 text-black rounded-3" style="background-color: rgb(225, 224, 223);">
+                                <p class="small p-2 ms-3 mb-1 text-black rounded-3" style="background-color: lightblue;">
                                     ${msg}
                                 </p>
                                 <p class="small ms-3 mb-3 rounded-3 text-muted float-end">
@@ -513,23 +641,14 @@
                     document.getElementById("editFrame").style.display = "block";
                     msgFrame.scrollTop(msgFrame.prop("scrollHeight"));
                     msgFrame.attr("data-remark", "WorldRoom");
-                    $("#liWorldRoom").addClass("smallMsgBox");
+                    $("#liWorldRoom").addClass("boxAlreadyShow");
                 }
             })
         }
 
         $("#quit").click(() => {
             sessionStorage.clear();
-            $.ajax({
-                url: "/quit",
-                method: "post",
-                data: {
-                    "account": acc,
-                },
-                success: function (response) {
-                    window.location.href = "/login"
-                }
-            });
+            window.location.href = "/login"
         })
 
         $("#settings").click(() => {
@@ -583,7 +702,7 @@
         })
 
         function showMsg(receiver) {
-            let temp = $(".smallMsgBox" + receiver).is('*');
+            let temp = $("#li" + receiver).is('*');
             if (!temp) {
                 showPage('msgPage');
                 msgBtn.addClass('using');
@@ -608,11 +727,12 @@
                         if (msgHtmlMsg.length > 5) {
                             msgHtmlMsg = msgs[len - 1].Message.substring(0, 5) + "...";
                         }
-                        let boxSpe = "smallMsgBox" + receiver;
+                        let boxSpe = "li" + receiver;
                         let msgSpe = "msg" + receiver;
                         let timeSpe = "time" + receiver;
+                        let unreadSpe = "unreadNum" + receiver;
                         let msgHtml = `
-<li class="p-2 ${boxSpe}" onclick="showMsg2(${receiver})">
+<li id="${boxSpe}" class="p-2 boxAlreadyShow" style="border-radius: 10px" onclick="showMsg2(${receiver})">
     <div class="d-flex justify-content-between">
         <div class="d-flex flex-row">
             <div>
@@ -625,7 +745,7 @@
         </div>
         <div class="pt-1">
             <p class="small text-muted mb-1" id="${timeSpe}">${finalArr}</p>
-            <span class="badge bg-danger rounded-pill float-end"></span>
+            <span id="${unreadSpe}" class="badge bg-danger rounded-pill float-end"></span>
         </div>
     </div>
 </li>
@@ -636,7 +756,7 @@
                                 let originalStr = msgs[i].CreatedAt;
                                 let resArr = originalStr.split("T");
                                 let finalIndex = resArr[1].length - 4;
-                                let finalArr = resArr[0] + " " + resArr[1].substring(0, finalIndex);
+                                let finalArr = response["senderUsername"] + " | " + resArr[0] + " " + resArr[1].substring(0, finalIndex);
                                 let msgTemp = msgs[i].Message;
                                 let msg = emojiShowFunc(msgTemp);
                                 let msgRightHtml = `
@@ -657,14 +777,14 @@
                                 let originalStr = msgs[i].CreatedAt;
                                 let resArr = originalStr.split("T");
                                 let finalIndex = resArr[1].length - 4;
-                                let finalArr = resArr[0] + " " + resArr[1].substring(0, finalIndex);
+                                let finalArr = response["receiverUsername"] + " | " + resArr[0] + " " + resArr[1].substring(0, finalIndex);
                                 let msgTemp = msgs[i].Message;
                                 let msg = emojiShowFunc(msgTemp);
                                 let msgLeftHtml = `
                         <li class="d-flex flex-row justify-content-start">
                             <img src="${response["receiverImg"]}" style="width: 45px;height: 45px;border-radius: 8px;user-select: none">
                             <div>
-                                <p class="small p-2 ms-3 mb-1 text-black rounded-3" style="background-color: rgb(225, 224, 223);">
+                                <p class="small p-2 ms-3 mb-1 text-black rounded-3" style="background-color: lightblue;">
                                     ${msg}
                                 </p>
                                 <p class="small ms-3 mb-3 rounded-3 text-muted float-end">
@@ -679,6 +799,15 @@
                         document.getElementById("editFrame").style.display = "block";
                         msgFrame.scrollTop(msgFrame.prop("scrollHeight"));
                         msgFrame.attr("data-remark", receiver);
+                        $('#msgPageUl li').each(function () {
+                            let id = $(this).attr('id');
+
+                            if (id === "li" + receiver) {
+                                $(this).addClass("boxUsing");
+                            } else {
+                                $(this).removeClass("boxUsing");
+                            }
+                        });
                     }
                 });
             } else {
@@ -690,6 +819,15 @@
 
         function showMsg2(receiver) {
             let receiverStr = String(receiver);
+            $('#msgPageUl li').each(function () {
+                let id = $(this).attr('id');
+
+                if (id === "li" + receiverStr) {
+                    $(this).addClass("boxUsing");
+                } else {
+                    $(this).removeClass("boxUsing");
+                }
+            });
             $.ajax({
                 url: "/getChatMsg",
                 method: "post",
@@ -698,16 +836,27 @@
                     "receiver": receiverStr,
                 },
                 success: function (response) {
+                    $("#unreadNum"+receiverStr).text("");
                     let msgFrame = $("#msgFrame");
                     msgFrame.empty();
                     let msgs = response["msgs"];
                     let len = msgs.length;
+                    let originalStr = msgs[len - 1].CreatedAt;
+                    let resArr = originalStr.split("T");
+                    let finalIndex = resArr[1].length - 4;
+                    let finalArr = resArr[0] + " " + resArr[1].substring(0, finalIndex);
+                    let msgHtmlMsg = msgs[len - 1].Message;
+                    if (msgHtmlMsg.length > 5) {
+                        msgHtmlMsg = msgs[len - 1].Message.substring(0, 5) + "...";
+                    }
+                    $("#time" + receiverStr).text(finalArr);
+                    $("#msg" + receiverStr).text(msgHtmlMsg);
                     for (let i = 0; i < len; i++) {
                         if (msgs[i].SenderAccount === acc && msgs[i].ReceiverAccount === receiverStr) {
                             let originalStr = msgs[i].CreatedAt;
                             let resArr = originalStr.split("T");
                             let finalIndex = resArr[1].length - 4;
-                            let finalArr = resArr[0] + " " + resArr[1].substring(0, finalIndex);
+                            let finalArr = response["senderUsername"] + " | " + resArr[0] + " " + resArr[1].substring(0, finalIndex);
                             let msgTemp = msgs[i].Message;
                             let msg = emojiShowFunc(msgTemp);
                             let msgRightHtml = `
@@ -728,14 +877,14 @@
                             let originalStr = msgs[i].CreatedAt;
                             let resArr = originalStr.split("T");
                             let finalIndex = resArr[1].length - 4;
-                            let finalArr = resArr[0] + " " + resArr[1].substring(0, finalIndex);
+                            let finalArr = response["receiverUsername"] + " | " + resArr[0] + " " + resArr[1].substring(0, finalIndex);
                             let msgTemp = msgs[i].Message;
                             let msg = emojiShowFunc(msgTemp);
                             let msgLeftHtml = `
                         <li class="d-flex flex-row justify-content-start">
                             <img src="${response["receiverImg"]}" style="width: 45px;height: 45px;border-radius: 8px;user-select: none">
                             <div>
-                                <p class="small p-2 ms-3 mb-1 text-black rounded-3" style="background-color: rgb(225, 224, 223);">
+                                <p class="small p-2 ms-3 mb-1 text-black rounded-3" style="background-color: lightblue;">
                                     ${msg}
                                 </p>
                                 <p class="small ms-3 mb-3 rounded-3 text-muted float-end">
@@ -749,6 +898,7 @@
                     }
                     document.getElementById("editFrame").style.display = "block";
                     msgFrame.scrollTop(msgFrame.prop("scrollHeight"));
+                    msgFrame.attr("data-remark", receiverStr);
                 }
             });
         }
@@ -766,7 +916,9 @@
         function agreeReq(data) {
             let infoId = data.value1;
             let sender = data.value2;
+            let senderStr = String(sender);
             let receiver = data.value3;
+            let receiverStr = String(receiver);
             let btn = data.value4;
             $.ajax({
                 url: "/agreeReq",
@@ -777,6 +929,12 @@
                     "receiver": receiver,
                 },
                 success: function (response) {
+                    let message = {
+                        Sender: senderStr,
+                        Receiver: receiverStr,
+                        Type: "AddFriend",
+                    };
+                    conn.send(JSON.stringify(message));
                     btn.parent().parent().parent().parent().remove();
                 }
             });
@@ -814,6 +972,14 @@
                     },
                     success: function (response) {
                         if (response["status"] === "1") {
+                            let message = {
+                                Sender: acc,
+                                Receiver: friendAcc.val(),
+                                InfoId: response["infoId"],
+                                Type: "FriendRequest",
+                            };
+                            conn.send(JSON.stringify(message));
+
                             friendAcc.val("");
                             $.message({
                                 message: '已发送请求',
@@ -889,7 +1055,6 @@
             });
         });
 
-        // 点击页面的其他地方时隐藏表情框
         $(document).click(function (event) {
             if (!emojiContainer.is(event.target) && !showEmojis.is(event.target)) {
                 emojiContainer.hide();

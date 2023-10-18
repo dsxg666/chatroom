@@ -1,0 +1,10 @@
+Database:
+  DBType: mysql
+  UserName: root
+  Password: Aa.1324788902
+  Host: localhost:3306
+  DBName: chatroom
+  Charset: utf8
+  ParseTime: True
+  MaxIdleConns: 50
+  MaxOpenConns: 50

@@ -1,0 +1,89 @@
+{{define "main/login.html"}}
+    <!doctype html>
+    <html lang="zh-CN">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>dsxg聊天室 登录</title>
+        <link rel="shortcut icon" href="/static/img/favicon.ico">
+        <link href="/static/css/bootstrap.min.css" rel="stylesheet">
+        <style>
+            .h-custom {
+                height: calc(100% - 73px);
+            }
+        </style>
+    </head>
+    <body>
+    <section class="vh-100">
+        <div class="container-fluid h-custom">
+            <div class="row d-flex justify-content-center align-items-center h-100">
+                <div class="col-md-9 col-lg-6 col-xl-5">
+                    <img src="/static/img/login.webp" class="img-fluid" alt="login img">
+                </div>
+                <div class="col-md-8 col-lg-6 col-xl-4 offset-xl-1">
+                    <br><br><br>
+                    <div class="form-floating mb-3">
+                        <input type="text" class="form-control rounded-3" id="account" placeholder="账号">
+                        <label for="floatingPassword">账号</label>
+                    </div>
+                    <br>
+                    <div class="form-floating mb-3">
+                        <input type="password" class="form-control rounded-3" id="password" placeholder="密码">
+                        <label for="floatingPassword">密码</label>
+                    </div>
+                    <div class="text-center text-lg-start mt-4 pt-2">
+                        <button id="login" class="btn btn-primary btn-lg"
+                                style="padding-left: 2.5rem; padding-right: 2.5rem;">登录
+                        </button>
+                        <p class="small fw-bold mt-2 pt-1 mb-0">
+                            <span>还没有账号？ </span>
+                            <a href="/register" class="link-danger">注册</a>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="text-center py-4 px-4 px-xl-5 bg-primary">
+            <!-- Copyright -->
+            <div class="text-white">
+                Copyright © 2023 DsxgChatroom. All rights reserved.
+            </div>
+        </div>
+    </section>
+    <script src="/static/js/jquery-3.7.0.min.js"></script>
+    <script src="/static/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/js/message.js"></script>
+    <script>
+        $("#login").click(() => {
+            let acc = $("#account").val()
+            $.ajax({
+                url: "/login",
+                method: "Post",
+                data: {
+                    "account": acc,
+                    "password": $("#password").val(),
+                },
+                success: function (response) {
+                    if (response["status"] === "1") {
+                        sessionStorage.setItem("isLogin", "true");
+                        sessionStorage.setItem("account", acc);
+                        window.location.href = '/?account=' + acc;
+                    } else if (response["status"] === "0") {
+                        $.message({
+                            message: '密码错误！',
+                            type: 'error'
+                        });
+                    } else if (response["status"] === "2") {
+                        $.message({
+                            message: '该账号已登陆！',
+                            type: 'error'
+                        });
+                    }
+                }
+            });
+        })
+    </script>
+    </body>
+    </html>
+{{end}}

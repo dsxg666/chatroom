@@ -1,0 +1,35 @@
+{{define "main/account.html"}}
+    <!doctype html>
+    <html lang="zh-CN">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>dsxg聊天室 新账号</title>
+        <link rel="shortcut icon" href="/static/img/favicon.ico">
+        <link href="/static/css/bootstrap.min.css" rel="stylesheet">
+    </head>
+    <body>
+    <svg xmlns="http://www.w3.org/2000/svg" class="d-none">
+        <symbol id="check2-circle" viewBox="0 0 16 16">
+            <path d="M2.5 8a5.5 5.5 0 0 1 8.25-4.764.5.5 0 0 0 .5-.866A6.5 6.5 0 1 0 14.5 8a.5.5 0 0 0-1 0 5.5 5.5 0 1 1-11 0z"/>
+            <path d="M15.354 3.354a.5.5 0 0 0-.708-.708L8 9.293 5.354 6.646a.5.5 0 1 0-.708.708l3 3a.5.5 0 0 0 .708 0l7-7z"/>
+        </symbol>
+    </svg>
+    <div class="container my-5">
+        <div class="position-relative p-5 text-center text-muted bg-body border border-dashed rounded-5">
+            <svg class="bi mt-5 mb-3" width="48" height="48">
+                <use xlink:href="#check2-circle"/>
+            </svg>
+            <p class="col-lg-6 mx-auto mb-4">账号创建成功</p>
+            <h1 class="text-body-emphasis" style="color: black">您的账号为：{{.account}}</h1>
+            <br><br>
+            <a class="btn btn-primary px-5 mb-5" type="button" href="/login">
+                前往登录
+            </a>
+        </div>
+    </div>
+    <script src="/static/js/jquery-3.7.0.min.js"></script>
+    <script src="/static/js/bootstrap.bundle.min.js"></script>
+    </body>
+    </html>
+{{end}}

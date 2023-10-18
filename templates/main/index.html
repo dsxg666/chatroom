@@ -1,0 +1,1047 @@
+{{define "main/index.html"}}
+    <!doctype html>
+    <html lang="zh-CN" xmlns="http://www.w3.org/1999/xhtml">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+        <meta http-equiv="Pragma" content="no-cache">
+        <meta http-equiv="Expires" content="0">
+        <title>dsxg聊天室</title>
+        <link rel="shortcut icon" href="/static/img/favicon.ico">
+        <link href="/static/css/bootstrap.min.css" rel="stylesheet">
+        <link href="/static/css/chatroom.css" rel="stylesheet">
+        <link href="/static/css/font.css" rel="stylesheet">
+        <script src="/static/js/jquery-3.7.0.min.js"></script>
+        <script src="/static/js/bootstrap.bundle.min.js"></script>
+        <script src="/static/js/message.js"></script>
+        <style>
+            .using {
+                color: rgb(101, 219, 121);
+            }
+
+            svg {
+                width: 100%;
+                height: 100%;
+                visibility: hidden;
+            }
+
+            .hit {
+                cursor: pointer;
+            }
+        </style>
+        <script>
+            let isLogin = sessionStorage.getItem('isLogin');
+            if (isLogin !== "true") {
+                window.location.href = '/login';
+            }
+        </script>
+    </head>
+    <body>
+    <section style="border: 1px solid darkgray;border-radius: 15px;width: 90%;height: 80%">
+        <div class="container py-5" style="height: 100%;">
+            <div class="row" style="height: 100%;">
+                <div class="col-md-1"
+                     style="padding-top: 5px;padding-bottom: 5px; display: flex; flex-direction: column; align-items: center; justify-content: space-between;">
+                    <img src="{{.img}}" alt="Avatar"
+                         style="width: 50px; height: 50px;border-radius: 8px;user-select: none">
+                    <span id="msgBtn" class="material-icons using"
+                          style="font-size: 35px;user-select: none;">chat</span>
+                    <span id="friendBtn" class="material-icons" style="font-size: 35px;user-select: none">people</span>
+                    <span id="infoBtn" class="material-icons"
+                          style="font-size: 35px;user-select: none">notifications</span>
+                    <span class="material-icons" id="settings" style="font-size: 35px;user-select: none">settings</span>
+                    <span class="material-icons" id="quit" style="font-size: 35px;user-select: none">logout</span>
+                </div>
+                <div class="col-md-3" style="position: relative;">
+                    <div class="tab-content">
+                        <div class="tab-pane fade pages show active" id="msgPage" role="tabpanel">
+                            <ul id="msgPageUl" class="list-unstyled mb-0"
+                                style="position: absolute;right: 0; left: 0;overflow: auto; max-height: 100%;">
+                                <li id="liWorldRoom" class="p-2" onclick="showWorldRoom()">
+                                    <div class="d-flex justify-content-between">
+                                        <div class="d-flex flex-row">
+                                            <div>
+                                                <img src="/static/img/world.png" alt="avatar"
+                                                     class="d-flex align-self-center me-3"
+                                                     style="width: 50px;height: 50px;border-radius: 8px;user-select: none">
+                                            </div>
+                                            <div class="pt-1">
+                                                <p class="fw-bold mb-0">世界群聊</p>
+                                                <p id="msgWorldRoom" class="text-muted"></p>
+                                            </div>
+                                        </div>
+                                        <div class="pt-1">
+                                            <p class="small text-muted mb-1" id="timeWorldRoom"></p>
+                                            <span class="badge bg-danger rounded-pill float-end"></span>
+                                        </div>
+                                    </div>
+                                </li>
+                            </ul>
+                        </div>
+                        <div class="tab-pane fade pages" id="friendPage" role="tabpanel">
+                            <div class="input-group mb-3">
+                                <input type="text" class="form-control" id="friendAcc" placeholder="好友账号">
+                                <button class="btn btn-outline-secondary" type="button" id="addFriend">添加</button>
+                            </div>
+                            <ul class="list-unstyled mb-0"
+                                style="position: absolute;right: 0; left: 0;overflow: auto; max-height: 100%;">
+                                {{range $key, $value := .friendArr}}
+                                    <li class="p-2" onclick="showMsg({{$value.Account}})">
+                                        <div class="d-flex justify-content-between">
+                                            <div class="d-flex flex-row">
+                                                <div>
+                                                    <img src="{{$value.Img}}" alt="avatar"
+                                                         class="d-flex align-self-center me-3" width="50px"
+                                                         height="50px">
+                                                </div>
+                                                <div class="pt-1">
+                                                    <p class="fw-bold mb-0"
+                                                       style="margin-top: 8px">{{$value.Username}}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </li>
+                                {{end}}
+                            </ul>
+                        </div>
+                        <div class="tab-pane fade pages" id="infoPage" role="tabpanel">
+                            <ul class="list-unstyled mb-0"
+                                style="position: absolute;right: 0; left: 0;overflow: auto; max-height: 100%;">
+                                {{range $key, $value := .infoArr}}
+                                    <li class="p-2">
+                                        <div id="info"
+                                             style="padding: 10px;border: 1px solid darkgray;border-radius: 15px;">
+                                            <div class="row">
+                                                <div class="col h5">
+                                                    来自 {{$value.SenderAccount}} 的加好友请求
+                                                </div>
+                                            </div>
+                                            <div class="row">
+                                                <div class="col">
+                                                    <button type="button"
+                                                            onclick="agreeReq({value1: {{$value.Id}}, value2: {{$value.SenderAccount}}, value3: {{$value.ReceiverAccount}}, value4: $(this)})"
+                                                            class="btn btn-success">同意
+                                                    </button>
+                                                </div>
+                                                <div class="col">
+                                                    <button type="button"
+                                                            onclick="rejectReq({value1: {{$value.Id}}, value2: $(this)})"
+                                                            class="btn btn-danger">拒绝
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </li>
+                                {{end}}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-8" style="display: flex; flex-direction: column; height: 100%;">
+                    <ul id="msgFrame" style="flex: 9; overflow: auto; max-height: 100%;">
+                        <svg class="flameSVG" viewBox="0 0 800 600" xmlns="http://www.w3.org/2000/svg">
+                            <defs>
+                                <rect class="flame" x="400" y="310" width="5" height="5" rx="0.5" ry="0.5"
+                                      fill="#FFDD02"/>
+                                <circle class="spark" cx="400" cy="300" r="0.05" fill="#FFDD02"/>
+                                <filter id="shadow" x="-100%" y="-100%" width="250%" height="250%">
+                                    <feOffset in="SourceAlpha" dx="4" dy="4" result="offsetOut"></feOffset>
+                                    <feGaussianBlur stdDeviation="3" in="offsetOut" result="drop"/>
+                                    <feOffset dx="0" dy="0" result="offsetblur"></feOffset>
+                                    <feFlood id="glowAlpha" flood-color="#0F1217" flood-opacity="0.42"></feFlood>
+                                    <feComposite in2="offsetblur" operator="in"></feComposite>
+                                    <feMerge>
+                                        <feMergeNode/>
+                                        <feMergeNode in="SourceGraphic"></feMergeNode>
+                                    </feMerge>
+                                </filter>
+                            </defs>
+
+                            <g class="whole">
+                                <g class="flameContainer"/>
+                                <g class="sparksContainer"/>
+                                <g class="logs" opacity="1">
+                                    <path d="M446.68,299.63l-91.46,29.22a3,3,0,0,1-3.68-2.12L349.2,318a3,3,0,0,1,2.12-3.68l91.46-29.22a3,3,0,0,1,3.68,2.12L448.8,296A3,3,0,0,1,446.68,299.63Z"
+                                          fill="#612e25"/>
+                                    <path filter="url(#shadow)"
+                                          d="M349.2,296l2.34-8.69a3,3,0,0,1,3.68-2.12l91.46,29.22A3,3,0,0,1,448.8,318l-2.34,8.69a3,3,0,0,1-3.68,2.12l-91.46-29.22A3,3,0,0,1,349.2,296Z"
+                                          fill="#70392f"/>
+                                </g>
+                            </g>
+
+                            <rect class="hit" width="200" height="260" x="300" y="230" fill="transparent">
+                                <title>Poke the fire!</title>
+                            </rect>
+                        </svg>
+                    </ul>
+                    <div id="editFrame" style="flex: 1;display: none !important;"
+                         class="d-flex justify-content-start align-items-center pe-3 pt-3 mt-2">
+                        <span class="material-icons" id="showEmojis"
+                              style="font-size: 35px;user-select: none;margin-right: 10px">emoji_emotions</span>
+                        <span class="material-icons"
+                              style="font-size: 35px;user-select: none;margin-right: 15px">folder</span>
+                        <div id="emojiContainer" class="position-absolute" style="display: none;">
+                            <div class="card">
+                                <div class="card-body">
+                                    <img class="emoji" alt="[脱单doge]" src="/static/img/emojis/1.png"
+                                         style="height:24px;user-select:none">
+                                    <img class="emoji" alt="[微笑]" src="/static/img/emojis/2.png"
+                                         style="height:24px;user-select:none">
+                                    <img class="emoji" alt="[口罩]" src="/static/img/emojis/3.png"
+                                         style="height:24px;user-select:none">
+                                    <img class="emoji" alt="[doge]" src="/static/img/emojis/4.png"
+                                         style="height:24px;user-select:none">
+                                    <img class="emoji" alt="[妙啊]" src="/static/img/emojis/5.png"
+                                         style="height:24px;user-select:none">
+                                    <img class="emoji" alt="[OK]" src="/static/img/emojis/6.png"
+                                         style="height:24px;user-select:none">
+                                    <img class="emoji" alt="[星星眼]" src="/static/img/emojis/7.png"
+                                         style="height:24px;user-select:none">
+                                    <img class="emoji" alt="[辣眼睛]" src="/static/img/emojis/8.png"
+                                         style="height:24px;user-select:none">
+                                    <img class="emoji" alt="[吃瓜]" src="/static/img/emojis/9.png"
+                                         style="height:24px;user-select:none">
+                                    <img class="emoji" alt="[滑稽]" src="/static/img/emojis/10.png"
+                                         style="height:24px;user-select:none"><br>
+                                    <img class="emoji" alt="[呲牙]" src="/static/img/emojis/11.png"
+                                         style="height:24px;user-select:none">
+                                    <img class="emoji" alt="[打call]" src="/static/img/emojis/12.png"
+                                         style="height:24px;user-select:none">
+                                    <img class="emoji" alt="[歪嘴]" src="/static/img/emojis/13.png"
+                                         style="height:24px;user-select:none">
+                                    <img class="emoji" alt="[调皮]" src="/static/img/emojis/14.png"
+                                         style="height:24px;user-select:none">
+                                    <img class="emoji" alt="[嗑瓜子]" src="/static/img/emojis/15.png"
+                                         style="height:24px;user-select:none">
+                                    <img class="emoji" alt="[笑哭]" src="/static/img/emojis/16.png"
+                                         style="height:24px;user-select:none">
+                                    <img class="emoji" alt="[脸红]" src="/static/img/emojis/17.png"
+                                         style="height:24px;user-select:none">
+                                    <img class="emoji" alt="[给心心]" src="/static/img/emojis/18.png"
+                                         style="height:24px;user-select:none">
+                                    <img class="emoji" alt="[嘟嘟]" src="/static/img/emojis/19.png"
+                                         style="height:24px;user-select:none">
+                                    <img class="emoji" alt="[哦呼]" src="/static/img/emojis/20.png"
+                                         style="height:24px;user-select:none"><br>
+                                    <img class="emoji" alt="[喜欢]" src="/static/img/emojis/21.png"
+                                         style="height:24px;user-select:none">
+                                    <img class="emoji" alt="[酸了]" src="/static/img/emojis/22.png"
+                                         style="height:24px;user-select:none">
+                                    <img class="emoji" alt="[嫌弃]" src="/static/img/emojis/23.png"
+                                         style="height:24px;user-select:none">
+                                    <img class="emoji" alt="[害羞]" src="/static/img/emojis/24.png"
+                                         style="height:24px;user-select:none">
+                                    <img class="emoji" alt="[大哭]" src="/static/img/emojis/25.png"
+                                         style="height:24px;user-select:none">
+                                    <img class="emoji" alt="[疑惑]" src="/static/img/emojis/26.png"
+                                         style="height:24px;user-select:none">
+                                    <img class="emoji" alt="[喜极而泣]" src="/static/img/emojis/27.png"
+                                         style="height:24px;user-select:none">
+                                    <img class="emoji" alt="[笑]" src="/static/img/emojis/28.png"
+                                         style="height:24px;user-select:none">
+                                    <img class="emoji" alt="[偷笑]" src="/static/img/emojis/29.png"
+                                         style="height:24px;user-select:none">
+                                    <img class="emoji" alt="[惊讶]" src="/static/img/emojis/30.png"
+                                         style="height:24px;user-select:none"><br>
+                                    <img class="emoji" alt="[捂脸]" src="/static/img/emojis/31.png"
+                                         style="height:24px;user-select:none">
+                                    <img class="emoji" alt="[阴险]" src="/static/img/emojis/32.png"
+                                         style="height:24px;user-select:none">
+                                    <img class="emoji" alt="[呆]" src="/static/img/emojis/33.png"
+                                         style="height:24px;user-select:none">
+                                    <img class="emoji" alt="[抠鼻]" src="/static/img/emojis/34.png"
+                                         style="height:24px;user-select:none">
+                                    <img class="emoji" alt="[大笑]" src="/static/img/emojis/35.png"
+                                         style="height:24px;user-select:none">
+                                    <img class="emoji" alt="[惊喜]" src="/static/img/emojis/36.png"
+                                         style="height:24px;user-select:none">
+                                    <img class="emoji" alt="[无语]" src="/static/img/emojis/37.png"
+                                         style="height:24px;user-select:none">
+                                    <img class="emoji" alt="[点赞]" src="/static/img/emojis/38.png"
+                                         style="height:24px;user-select:none">
+                                    <img class="emoji" alt="[鼓掌]" src="/static/img/emojis/39.png"
+                                         style="height:24px;user-select:none">
+                                    <img class="emoji" alt="[尴尬]" src="/static/img/emojis/40.png"
+                                         style="height:24px;user-select:none"><br>
+                                    <img class="emoji" alt="[灵魂出窍]" src="/static/img/emojis/41.png"
+                                         style="height:24px;user-select:none">
+                                    <img class="emoji" alt="[委屈]" src="/static/img/emojis/42.png"
+                                         style="height:24px;user-select:none">
+                                    <img class="emoji" alt="[傲娇]" src="/static/img/emojis/43.png"
+                                         style="height:24px;user-select:none">
+                                    <img class="emoji" alt="[疼]" src="/static/img/emojis/44.png"
+                                         style="height:24px;user-select:none">
+                                    <img class="emoji" alt="[冷]" src="/static/img/emojis/45.png"
+                                         style="height:24px;user-select:none">
+                                    <img class="emoji" alt="[热]" src="/static/img/emojis/46.png"
+                                         style="height:24px;user-select:none">
+                                    <img class="emoji" alt="[生病]" src="/static/img/emojis/47.png"
+                                         style="height:24px;user-select:none">
+                                    <img class="emoji" alt="[捂眼]" src="/static/img/emojis/48.png"
+                                         style="height:24px;user-select:none">
+                                    <img class="emoji" alt="[嘘声]" src="/static/img/emojis/49.png"
+                                         style="height:24px;user-select:none">
+                                    <img class="emoji" alt="[思考]" src="/static/img/emojis/50.png"
+                                         style="height:24px;user-select:none"><br>
+                                    <img class="emoji" alt="[翻白眼]" src="/static/img/emojis/51.png"
+                                         style="height:24px;user-select:none">
+                                    <img class="emoji" alt="[哈欠]" src="/static/img/emojis/52.png"
+                                         style="height:24px;user-select:none">
+                                    <img class="emoji" alt="[奋斗]" src="/static/img/emojis/53.png"
+                                         style="height:24px;user-select:none">
+                                    <img class="emoji" alt="[墨镜]" src="/static/img/emojis/54.png"
+                                         style="height:24px;user-select:none">
+                                    <img class="emoji" alt="[难过]" src="/static/img/emojis/55.png"
+                                         style="height:24px;user-select:none">
+                                    <img class="emoji" alt="[撇嘴]" src="/static/img/emojis/56.png"
+                                         style="height:24px;user-select:none">
+                                    <img class="emoji" alt="[抓狂]" src="/static/img/emojis/57.png"
+                                         style="height:24px;user-select:none">
+                                    <img class="emoji" alt="[生气]" src="/static/img/emojis/58.png"
+                                         style="height:24px;user-select:none">
+                                    <img class="emoji" alt="[爱心]" src="/static/img/emojis/59.png"
+                                         style="height:24px;user-select:none">
+                                    <img class="emoji" alt="[胜利]" src="/static/img/emojis/60.png"
+                                         style="height:24px;user-select:none"><br>
+                                    <img class="emoji" alt="[加油]" src="/static/img/emojis/61.png"
+                                         style="height:24px;user-select:none">
+                                    <img class="emoji" alt="[抱拳]" src="/static/img/emojis/62.png"
+                                         style="height:24px;user-select:none">
+                                    <img class="emoji" alt="[保佑]" src="/static/img/emojis/63.png"
+                                         style="height:24px;user-select:none">
+                                    <img class="emoji" alt="[厉害]" src="/static/img/emojis/64.png"
+                                         style="height:24px;user-select:none">
+                                    <img class="emoji" alt="[拥抱]" src="/static/img/emojis/65.png"
+                                         style="height:24px;user-select:none">
+                                    <img class="emoji" alt="[派蒙]" src="/static/img/emojis/66.png"
+                                         style="height:24px;user-select:none">
+                                </div>
+                            </div>
+                        </div>
+                        <input type="text" id="inputFrame" class="form-control form-control-lg">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    <div class="modal fade" id="settingsModal" tabindex="-1" role="dialog" aria-labelledby="settingsModalLabel"
+         aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header" style="display: flex; justify-content: center; align-items: center;">
+                    <h4 class="modal-title">设置</h4>
+                </div>
+                <div class="modal-body">
+                    <div>
+                        <h6>修改头像：</h6>
+                        <div class="container">
+                            <form action="/upload" method="post" enctype="multipart/form-data">
+                                <input type="file" class="form-control" id="file" name="file" accept=".jpg">
+                            </form>
+                            <br>
+                            <div class="text-center">
+                                <button class="btn btn-primary" id="updateImg">上传</button>
+                            </div>
+                        </div>
+                    </div>
+                    <br>
+                    <div>
+                        <h6>当前昵称：{{.username}}</h6>
+                        <input type="text" class="form-control" id="newName" placeholder="输入你的新昵称"><br>
+                        <div class="text-center">
+                            <button class="btn btn-primary" id="updateName">修改</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src='/static/js/TweenMax.min.js'></script>
+    <script src='/static/js/CustomEase.min.js'></script>
+    <script src='/static/js/huo.js'></script>
+    <script>
+        let acc = sessionStorage.getItem('account');
+        let msgBtn = $("#msgBtn");
+        let showEmojis = $('#showEmojis');
+        let emojiContainer = $('#emojiContainer');
+        let inputFrame = $("#inputFrame");
+        let msgFrame = $("#msgFrame");
+    </script>
+    <script>
+        let conn;
+        if (window["WebSocket"]) {
+            conn = new WebSocket("ws://" + document.location.host + "/ws?account=" + acc);
+            conn.onmessage = function (evt) {
+                let msgObj = JSON.parse(evt.data);
+                let temp = $(".smallMsgBox").is('*');
+                if (temp) {
+                    if (msgObj.Sender === acc) {
+                        let msgTemp = msgObj.Message;
+                        let msg = emojiShowFunc(msgTemp);
+                        if (msgTemp.length > 5) {
+                            msgTemp = msgTemp.substring(0, 5) + "...";
+                        }
+                        let msgRightHtml = `
+                       <li class="d-flex flex-row justify-content-end">
+                            <div>
+                                <p class="small p-2 me-3 mb-1 text-black rounded-3" style="background-color: rgb(169, 234, 122)">
+                                    ${msg}
+                                </p>
+                                <p class="small me-3 mb-3 rounded-3 text-muted">
+                                    ${msgObj.Time}
+                                </p>
+                            </div>
+                            <img src="${msgObj.SenderImg}" style="width: 45px; height: 45px;">
+                       </li>
+            `;
+                        msgFrame.append(msgRightHtml);
+                        msgFrame.scrollTop(msgFrame.prop("scrollHeight"));
+                        $("#time" + msgObj.Receiver).text(msgObj.Time);
+                        $("#msg" + msgObj.Receiver).text(msgTemp);
+                    } else {
+                        let msgTemp = msgObj.Message;
+                        let msg = emojiShowFunc(msgTemp);
+                        if (msgTemp.length > 5) {
+                            msgTemp = msgTemp.substring(0, 5) + "...";
+                        }
+                        let msgLeftHtml = `
+                        <li class="d-flex flex-row justify-content-start">
+                            <img src="${msgObj.SenderImg}" style="width: 45px; height: 45px;">
+                            <div>
+                                <p class="small p-2 ms-3 mb-1 text-black rounded-3" style="background-color: rgb(225, 224, 223);">
+                                    ${msg}
+                                </p>
+                                <p class="small ms-3 mb-3 rounded-3 text-muted float-end">
+                                    ${msgObj.Time}
+                                </p>
+                            </div>
+                        </li>
+            `;
+                        msgFrame.append(msgLeftHtml);
+                        msgFrame.scrollTop(msgFrame.prop("scrollHeight"));
+                        if (msgObj.Receiver === "WorldRoom") {
+                            $("#timeWorldRoom").text(msgObj.time);
+                            $("#msgWorldRoom").text(msgTemp);
+                        } else {
+                            $("#time" + msgObj.Sender).text(msgObj.Time);
+                            $("#msg" + msgObj.Sender).text(msgTemp);
+                        }
+                    }
+                }
+            };
+        }
+
+        document.getElementById("inputFrame").addEventListener("keyup", function (event) {
+            if (event.key === "Enter") {
+                const message = {
+                    Message: inputFrame.val(),
+                    Sender: acc,
+                    Receiver: msgFrame.attr("data-remark"),
+                };
+                conn.send(JSON.stringify(message));
+                this.value = ""; // 清空输入框
+            }
+        });
+    </script>
+    <script>
+        function showWorldRoom() {
+            $.ajax({
+                url: "/getWorldRoomMsg",
+                method: "post",
+                success: function (response) {
+                    let msgFrame = $("#msgFrame");
+                    msgFrame.empty();
+                    let msgWorldRoom = response["msgWorldRoom"];
+                    let len = msgWorldRoom.length;
+                    let imgWorldRoom = response["imgWorldRoom"];
+                    let originalStr = msgWorldRoom[len - 1].CreatedAt;
+                    let resArr = originalStr.split("T");
+                    let finalIndex = resArr[1].length - 4;
+                    let finalArr = resArr[0] + " " + resArr[1].substring(0, finalIndex);
+                    let msgHtmlMsg = msgWorldRoom[len - 1].Message;
+                    if (msgHtmlMsg.length > 5) {
+                        msgHtmlMsg = msgWorldRoom[len - 1].Message.substring(0, 5) + "...";
+                    }
+                    $("#timeWorldRoom").text(finalArr);
+                    $("#msgWorldRoom").text(msgHtmlMsg);
+                    for (let i = 0; i < len; i++) {
+                        if (msgWorldRoom[i].SenderAccount === acc) {
+                            let originalStr = msgWorldRoom[i].CreatedAt;
+                            let resArr = originalStr.split("T");
+                            let finalIndex = resArr[1].length - 4;
+                            let finalStr = resArr[0] + " " + resArr[1].substring(0, finalIndex);
+                            let msgTemp = msgWorldRoom[i].Message;
+                            let msg = emojiShowFunc(msgTemp);
+                            let msgRightHtml = `
+                       <li class="d-flex flex-row justify-content-end">
+                            <div>
+                                <p class="small p-2 me-3 mb-1 text-black rounded-3" style="background-color: rgb(169, 234, 122)">
+                                    ${msg}
+                                </p>
+                                <p class="small me-3 mb-3 rounded-3 text-muted">
+                                    ${finalStr}
+                                </p>
+                            </div>
+                            <img src="${imgWorldRoom[i]}" style="width: 45px;height: 45px;border-radius: 8px;user-select: none">
+                        </li>
+            `;
+                            msgFrame.append(msgRightHtml);
+                        } else {
+                            let originalStr = msgWorldRoom[i].CreatedAt;
+                            let resArr = originalStr.split("T");
+                            let finalIndex = resArr[1].length - 4;
+                            let finalStr = resArr[0] + " " + resArr[1].substring(0, finalIndex);
+                            let msgTemp = msgWorldRoom[i].Message;
+                            let msg = emojiShowFunc(msgTemp);
+                            let msgLeftHtml = `
+                        <li class="d-flex flex-row justify-content-start">
+                            <img src="${imgWorldRoom[i]}" style="width: 45px;height: 45px;border-radius: 8px;user-select: none">
+                            <div>
+                                <p class="small p-2 ms-3 mb-1 text-black rounded-3" style="background-color: rgb(225, 224, 223);">
+                                    ${msg}
+                                </p>
+                                <p class="small ms-3 mb-3 rounded-3 text-muted float-end">
+                                    ${finalStr}
+                                </p>
+                            </div>
+                        </li>
+            `;
+                            msgFrame.append(msgLeftHtml);
+                        }
+                    }
+                    document.getElementById("editFrame").style.display = "block";
+                    msgFrame.scrollTop(msgFrame.prop("scrollHeight"));
+                    msgFrame.attr("data-remark", "WorldRoom");
+                    $("#liWorldRoom").addClass("smallMsgBox");
+                }
+            })
+        }
+
+        $("#quit").click(() => {
+            sessionStorage.clear();
+            $.ajax({
+                url: "/quit",
+                method: "post",
+                data: {
+                    "account": acc,
+                },
+                success: function (response) {
+                    window.location.href = "/login"
+                }
+            });
+        })
+
+        $("#settings").click(() => {
+            $("#settingsModal").modal('show');
+        })
+
+        $("#updateName").click(() => {
+            $.ajax({
+                url: "/updateName",
+                method: "post",
+                data: {
+                    "account": acc,
+                    "username": $("#newName").val(),
+                },
+                success: function (response) {
+                    if (response["status"] === "1") {
+                        $("#newName").val("");
+                        $.message({
+                            message: '修改成功！',
+                            type: 'success'
+                        });
+                    } else {
+                        $.message({
+                            message: '该昵称已经被他人使用了，请换一个吧。',
+                            type: 'error'
+                        });
+                    }
+                }
+            });
+        })
+
+        $("#updateImg").click(() => {
+            let file = $("#file")[0].files[0];
+            let form_data = new FormData();
+            form_data.append("file", file);
+            form_data.append("account", acc);
+            $.ajax({
+                url: "/updateImg",
+                type: "POST",
+                data: form_data,
+                dataType: "json",
+                contentType: false,
+                processData: false,
+                success: function (data) {
+                    $.message({
+                        message: '修改成功！',
+                        type: 'success'
+                    });
+                },
+            });
+        })
+
+        function showMsg(receiver) {
+            let temp = $(".smallMsgBox" + receiver).is('*');
+            if (!temp) {
+                showPage('msgPage');
+                msgBtn.addClass('using');
+                $('#friendBtn, #infoBtn').removeClass('using');
+                $.ajax({
+                    url: "/getChatMsg",
+                    method: "post",
+                    data: {
+                        "sender": acc,
+                        "receiver": receiver,
+                    },
+                    success: function (response) {
+                        let msgFrame = $("#msgFrame");
+                        msgFrame.empty();
+                        let msgs = response["msgs"];
+                        let len = msgs.length;
+                        let originalStr = msgs[len - 1].CreatedAt;
+                        let resArr = originalStr.split("T");
+                        let finalIndex = resArr[1].length - 4;
+                        let finalArr = resArr[0] + " " + resArr[1].substring(0, finalIndex);
+                        let msgHtmlMsg = msgs[len - 1].Message;
+                        if (msgHtmlMsg.length > 5) {
+                            msgHtmlMsg = msgs[len - 1].Message.substring(0, 5) + "...";
+                        }
+                        let boxSpe = "smallMsgBox" + receiver;
+                        let msgSpe = "msg" + receiver;
+                        let timeSpe = "time" + receiver;
+                        let msgHtml = `
+<li class="p-2 ${boxSpe}" onclick="showMsg2(${receiver})">
+    <div class="d-flex justify-content-between">
+        <div class="d-flex flex-row">
+            <div>
+                <img src="${response["receiverImg"]}" alt="avatar" class="d-flex align-self-center me-3" style="width: 50px;height: 50px;border-radius: 8px;user-select: none">
+            </div>
+            <div class="pt-1">
+                <p class="fw-bold mb-0">${response["receiverUsername"]}</p>
+                <p id="${msgSpe}" class="text-muted">${msgHtmlMsg}</p>
+            </div>
+        </div>
+        <div class="pt-1">
+            <p class="small text-muted mb-1" id="${timeSpe}">${finalArr}</p>
+            <span class="badge bg-danger rounded-pill float-end"></span>
+        </div>
+    </div>
+</li>
+            `;
+                        $("#msgPageUl").append(msgHtml);
+                        for (let i = 0; i < len; i++) {
+                            if (msgs[i].SenderAccount === acc && msgs[i].ReceiverAccount === receiver) {
+                                let originalStr = msgs[i].CreatedAt;
+                                let resArr = originalStr.split("T");
+                                let finalIndex = resArr[1].length - 4;
+                                let finalArr = resArr[0] + " " + resArr[1].substring(0, finalIndex);
+                                let msgTemp = msgs[i].Message;
+                                let msg = emojiShowFunc(msgTemp);
+                                let msgRightHtml = `
+                       <li class="d-flex flex-row justify-content-end">
+                            <div>
+                                <p class="small p-2 me-3 mb-1 text-black rounded-3" style="background-color: rgb(169, 234, 122)">
+                                    ${msg}
+                                </p>
+                                <p class="small me-3 mb-3 rounded-3 text-muted">
+                                    ${finalArr}
+                                </p>
+                            </div>
+                            <img src="${response["senderImg"]}" style="width: 45px;height: 45px;border-radius: 8px;user-select: none">
+                        </li>
+            `;
+                                msgFrame.append(msgRightHtml);
+                            } else if (msgs[i].SenderAccount === receiver && msgs[i].ReceiverAccount === acc) {
+                                let originalStr = msgs[i].CreatedAt;
+                                let resArr = originalStr.split("T");
+                                let finalIndex = resArr[1].length - 4;
+                                let finalArr = resArr[0] + " " + resArr[1].substring(0, finalIndex);
+                                let msgTemp = msgs[i].Message;
+                                let msg = emojiShowFunc(msgTemp);
+                                let msgLeftHtml = `
+                        <li class="d-flex flex-row justify-content-start">
+                            <img src="${response["receiverImg"]}" style="width: 45px;height: 45px;border-radius: 8px;user-select: none">
+                            <div>
+                                <p class="small p-2 ms-3 mb-1 text-black rounded-3" style="background-color: rgb(225, 224, 223);">
+                                    ${msg}
+                                </p>
+                                <p class="small ms-3 mb-3 rounded-3 text-muted float-end">
+                                    ${finalArr}
+                                </p>
+                            </div>
+                        </li>
+            `;
+                                msgFrame.append(msgLeftHtml);
+                            }
+                        }
+                        document.getElementById("editFrame").style.display = "block";
+                        msgFrame.scrollTop(msgFrame.prop("scrollHeight"));
+                        msgFrame.attr("data-remark", receiver);
+                    }
+                });
+            } else {
+                showPage('msgPage');
+                msgBtn.addClass('using');
+                $('#friendBtn, #groupBtn, #infoBtn').removeClass('using');
+            }
+        }
+
+        function showMsg2(receiver) {
+            let receiverStr = String(receiver);
+            $.ajax({
+                url: "/getChatMsg",
+                method: "post",
+                data: {
+                    "sender": acc,
+                    "receiver": receiverStr,
+                },
+                success: function (response) {
+                    let msgFrame = $("#msgFrame");
+                    msgFrame.empty();
+                    let msgs = response["msgs"];
+                    let len = msgs.length;
+                    for (let i = 0; i < len; i++) {
+                        if (msgs[i].SenderAccount === acc && msgs[i].ReceiverAccount === receiverStr) {
+                            let originalStr = msgs[i].CreatedAt;
+                            let resArr = originalStr.split("T");
+                            let finalIndex = resArr[1].length - 4;
+                            let finalArr = resArr[0] + " " + resArr[1].substring(0, finalIndex);
+                            let msgTemp = msgs[i].Message;
+                            let msg = emojiShowFunc(msgTemp);
+                            let msgRightHtml = `
+                       <li class="d-flex flex-row justify-content-end">
+                            <div>
+                                <p class="small p-2 me-3 mb-1 text-black rounded-3" style="background-color: rgb(169, 234, 122)">
+                                    ${msg}
+                                </p>
+                                <p class="small me-3 mb-3 rounded-3 text-muted">
+                                    ${finalArr}
+                                </p>
+                            </div>
+                            <img src="${response["senderImg"]}" style="width: 45px;height: 45px;border-radius: 8px;user-select: none">
+                        </li>
+            `;
+                            msgFrame.append(msgRightHtml);
+                        } else if (msgs[i].SenderAccount === receiverStr && msgs[i].ReceiverAccount === acc) {
+                            let originalStr = msgs[i].CreatedAt;
+                            let resArr = originalStr.split("T");
+                            let finalIndex = resArr[1].length - 4;
+                            let finalArr = resArr[0] + " " + resArr[1].substring(0, finalIndex);
+                            let msgTemp = msgs[i].Message;
+                            let msg = emojiShowFunc(msgTemp);
+                            let msgLeftHtml = `
+                        <li class="d-flex flex-row justify-content-start">
+                            <img src="${response["receiverImg"]}" style="width: 45px;height: 45px;border-radius: 8px;user-select: none">
+                            <div>
+                                <p class="small p-2 ms-3 mb-1 text-black rounded-3" style="background-color: rgb(225, 224, 223);">
+                                    ${msg}
+                                </p>
+                                <p class="small ms-3 mb-3 rounded-3 text-muted float-end">
+                                    ${finalArr}
+                                </p>
+                            </div>
+                        </li>
+            `;
+                            msgFrame.append(msgLeftHtml);
+                        }
+                    }
+                    document.getElementById("editFrame").style.display = "block";
+                    msgFrame.scrollTop(msgFrame.prop("scrollHeight"));
+                }
+            });
+        }
+
+        // msgFrame.on("scroll", function() {
+        //     let scrollPosition = msgFrame.scrollTop();
+        //     if (scrollPosition === 0) {
+        //         let result = confirm("需要加载更多消息？");
+        //         if (result) {
+        //         } else {
+        //         }
+        //     }
+        // });
+
+        function agreeReq(data) {
+            let infoId = data.value1;
+            let sender = data.value2;
+            let receiver = data.value3;
+            let btn = data.value4;
+            $.ajax({
+                url: "/agreeReq",
+                method: "post",
+                data: {
+                    "infoId": infoId,
+                    "sender": sender,
+                    "receiver": receiver,
+                },
+                success: function (response) {
+                    btn.parent().parent().parent().parent().remove();
+                }
+            });
+        }
+
+        function rejectReq(data) {
+            let infoId = data.value1;
+            let btn = data.value2;
+            $.ajax({
+                url: "/rejectReq",
+                method: "post",
+                data: {
+                    "infoId": infoId,
+                },
+                success: function (response) {
+                    btn.parent().parent().parent().parent().remove();
+                }
+            });
+        }
+
+        function isNumericString(input) {
+            let regex = /^[0-9]+$/;
+            return regex.test(input);
+        }
+
+        $("#addFriend").click(() => {
+            let friendAcc = $("#friendAcc");
+            if (isNumericString(friendAcc.val())) {
+                $.ajax({
+                    url: "/addFriend",
+                    method: "post",
+                    data: {
+                        "account": acc,
+                        "receiver": friendAcc.val(),
+                    },
+                    success: function (response) {
+                        if (response["status"] === "1") {
+                            friendAcc.val("");
+                            $.message({
+                                message: '已发送请求',
+                                type: 'success'
+                            });
+                        } else if (response["status"] === "0") {
+                            $.message({
+                                message: '账户不存在！',
+                                type: 'error'
+                            });
+                        } else if (response["status"] === "-1") {
+                            $.message({
+                                message: '请求已发送，对方未处理，请勿重复操作！',
+                                type: 'error'
+                            });
+                        } else if (response["status"] === "2") {
+                            $.message({
+                                message: '加好友请求发送给自己是没有意义的！',
+                                type: 'error'
+                            });
+                        } else if (response["status"] === "3") {
+                            $.message({
+                                message: '你们已经是好友了！',
+                                type: 'error'
+                            });
+                        }
+                    }
+                });
+            } else {
+                $.message({
+                    message: '请正确输入账户！',
+                    type: 'error'
+                });
+            }
+        })
+
+        msgBtn.click(() => {
+            showPage('msgPage');
+            $("#msgBtn").addClass('using');
+            $('#friendBtn, #infoBtn').removeClass('using');
+        })
+        $("#friendBtn").click(() => {
+            showPage('friendPage');
+            $("#friendBtn").addClass('using');
+            $('#msgBtn, #infoBtn').removeClass('using');
+        })
+        $("#infoBtn").click(() => {
+            showPage('infoPage');
+            $("#infoBtn").addClass('using');
+            $('#friendBtn, #msgBtn').removeClass('using');
+        })
+
+        function showPage(pageId) {
+            if (pageId === "msgPage") {
+                $('#msgPage').addClass('active show');
+                $('#friendPage, #infoPage').removeClass('active show');
+            } else if (pageId === "friendPage") {
+                $('#friendPage').addClass('active show');
+                $('#msgPage, #infoPage').removeClass('active show');
+            } else if (pageId === "infoPage") {
+                $('#infoPage').addClass('active show');
+                $('#msgPage, #friendPage').removeClass('active show');
+            }
+        }
+
+        showEmojis.click(function (event) {
+            event.stopPropagation();
+            emojiContainer.toggle();
+            let buttonPosition = showEmojis.offset();
+            emojiContainer.css({
+                top: buttonPosition.top - emojiContainer.height() - 10,
+                left: buttonPosition.left
+            });
+        });
+
+        // 点击页面的其他地方时隐藏表情框
+        $(document).click(function (event) {
+            if (!emojiContainer.is(event.target) && !showEmojis.is(event.target)) {
+                emojiContainer.hide();
+            }
+        });
+
+        emojiContainer.on('click', '.emoji', function () {
+            let emoji = $(this).attr('alt');
+            inputFrame.val(inputFrame.val() + emoji);
+            inputFrame.focus();
+        });
+
+        function emojiShowFunc(str) {
+            return str.replace(/\[([^\]]+)\]/g, (match, content) => {
+                if (content === "脱单doge") {
+                    return "<img src='/static/img/emojis/1.png' style='margin-bottom: 3px' width='20px'>";
+                } else if (content === "微笑") {
+                    return "<img src='/static/img/emojis/2.png' style='margin-bottom: 3px' width='20px'>";
+                } else if (content === "口罩") {
+                    return "<img src='/static/img/emojis/3.png' style='margin-bottom: 3px' width='20px'>";
+                } else if (content === "doge") {
+                    return "<img src='/static/img/emojis/4.png' style='margin-bottom: 3px' width='20px'>";
+                } else if (content === "妙啊") {
+                    return "<img src='/static/img/emojis/5.png' style='margin-bottom: 3px' width='20px'>";
+                } else if (content === "OK") {
+                    return "<img src='/static/img/emojis/6.png' style='margin-bottom: 3px' width='20px'>";
+                } else if (content === "星星眼") {
+                    return "<img src='/static/img/emojis/7.png' style='margin-bottom: 3px' width='20px'>";
+                } else if (content === "辣眼睛") {
+                    return "<img src='/static/img/emojis/8.png' style='margin-bottom: 3px' width='20px'>";
+                } else if (content === "吃瓜") {
+                    return "<img src='/static/img/emojis/9.png' style='margin-bottom: 3px' width='20px'>";
+                } else if (content === "滑稽") {
+                    return "<img src='/static/img/emojis/10.png' style='margin-bottom: 3px' width='20px'>";
+                } else if (content === "呲牙") {
+                    return "<img src='/static/img/emojis/11.png' style='margin-bottom: 3px' width='20px'>";
+                } else if (content === "打call") {
+                    return "<img src='/static/img/emojis/12.png' style='margin-bottom: 3px' width='20px'>";
+                } else if (content === "歪嘴") {
+                    return "<img src='/static/img/emojis/13.png' style='margin-bottom: 3px' width='20px'>";
+                } else if (content === "调皮") {
+                    return "<img src='/static/img/emojis/14.png' style='margin-bottom: 3px' width='20px'>";
+                } else if (content === "嗑瓜子") {
+                    return "<img src='/static/img/emojis/15.png' style='margin-bottom: 3px' width='20px'>";
+                } else if (content === "哭笑") {
+                    return "<img src='/static/img/emojis/16.png' style='margin-bottom: 3px' width='20px'>";
+                } else if (content === "脸红") {
+                    return "<img src='/static/img/emojis/17.png' style='margin-bottom: 3px' width='20px'>";
+                } else if (content === "给心心") {
+                    return "<img src='/static/img/emojis/18.png' style='margin-bottom: 3px' width='20px'>";
+                } else if (content === "嘟嘟") {
+                    return "<img src='/static/img/emojis/19.png' style='margin-bottom: 3px' width='20px'>";
+                } else if (content === "哦呼") {
+                    return "<img src='/static/img/emojis/20.png' style='margin-bottom: 3px' width='20px'>";
+                } else if (content === "喜欢") {
+                    return "<img src='/static/img/emojis/21.png' style='margin-bottom: 3px' width='20px'>";
+                } else if (content === "酸了") {
+                    return "<img src='/static/img/emojis/22.png' style='margin-bottom: 3px' width='20px'>";
+                } else if (content === "嫌弃") {
+                    return "<img src='/static/img/emojis/23.png' style='margin-bottom: 3px' width='20px'>";
+                } else if (content === "害羞") {
+                    return "<img src='/static/img/emojis/24.png' style='margin-bottom: 3px' width='20px'>";
+                } else if (content === "大哭") {
+                    return "<img src='/static/img/emojis/25.png' style='margin-bottom: 3px' width='20px'>";
+                } else if (content === "疑惑") {
+                    return "<img src='/static/img/emojis/26.png' style='margin-bottom: 3px' width='20px'>";
+                } else if (content === "喜极而泣") {
+                    return "<img src='/static/img/emojis/27.png' style='margin-bottom: 3px' width='20px'>";
+                } else if (content === "笑") {
+                    return "<img src='/static/img/emojis/28.png' style='margin-bottom: 3px' width='20px'>";
+                } else if (content === "偷笑") {
+                    return "<img src='/static/img/emojis/29.png' style='margin-bottom: 3px' width='20px'>";
+                } else if (content === "惊讶") {
+                    return "<img src='/static/img/emojis/30.png' style='margin-bottom: 3px' width='20px'>";
+                } else if (content === "捂脸") {
+                    return "<img src='/static/img/emojis/31.png' style='margin-bottom: 3px' width='20px'>";
+                } else if (content === "阴险") {
+                    return "<img src='/static/img/emojis/32.png' style='margin-bottom: 3px' width='20px'>";
+                } else if (content === "呆") {
+                    return "<img src='/static/img/emojis/33.png' style='margin-bottom: 3px' width='20px'>";
+                } else if (content === "抠鼻") {
+                    return "<img src='/static/img/emojis/34.png' style='margin-bottom: 3px' width='20px'>";
+                } else if (content === "大笑") {
+                    return "<img src='/static/img/emojis/35.png' style='margin-bottom: 3px' width='20px'>";
+                } else if (content === "惊喜") {
+                    return "<img src='/static/img/emojis/36.png' style='margin-bottom: 3px' width='20px'>";
+                } else if (content === "无语") {
+                    return "<img src='/static/img/emojis/37.png' style='margin-bottom: 3px' width='20px'>";
+                } else if (content === "点赞") {
+                    return "<img src='/static/img/emojis/38.png' style='margin-bottom: 3px' width='20px'>";
+                } else if (content === "鼓掌") {
+                    return "<img src='/static/img/emojis/39.png' style='margin-bottom: 3px' width='20px'>";
+                } else if (content === "尴尬") {
+                    return "<img src='/static/img/emojis/40.png' style='margin-bottom: 3px' width='20px'>";
+                } else if (content === "灵魂出窍") {
+                    return "<img src='/static/img/emojis/41.png' style='margin-bottom: 3px' width='20px'>";
+                } else if (content === "委屈") {
+                    return "<img src='/static/img/emojis/42.png' style='margin-bottom: 3px' width='20px'>";
+                } else if (content === "傲娇") {
+                    return "<img src='/static/img/emojis/43.png' style='margin-bottom: 3px' width='20px'>";
+                } else if (content === "疼") {
+                    return "<img src='/static/img/emojis/44.png' style='margin-bottom: 3px' width='20px'>";
+                } else if (content === "冷") {
+                    return "<img src='/static/img/emojis/45.png' style='margin-bottom: 3px' width='20px'>";
+                } else if (content === "热") {
+                    return "<img src='/static/img/emojis/46.png' style='margin-bottom: 3px' width='20px'>";
+                } else if (content === "生病") {
+                    return "<img src='/static/img/emojis/47.png' style='margin-bottom: 3px' width='20px'>";
+                } else if (content === "捂眼") {
+                    return "<img src='/static/img/emojis/48.png' style='margin-bottom: 3px' width='20px'>";
+                } else if (content === "嘘声") {
+                    return "<img src='/static/img/emojis/49.png' style='margin-bottom: 3px' width='20px'>";
+                } else if (content === "思考") {
+                    return "<img src='/static/img/emojis/50.png' style='margin-bottom: 3px' width='20px'>";
+                } else if (content === "翻白眼") {
+                    return "<img src='/static/img/emojis/51.png' style='margin-bottom: 3px' width='20px'>";
+                } else if (content === "哈欠") {
+                    return "<img src='/static/img/emojis/52.png' style='margin-bottom: 3px' width='20px'>";
+                } else if (content === "奋斗") {
+                    return "<img src='/static/img/emojis/53.png' style='margin-bottom: 3px' width='20px'>";
+                } else if (content === "墨镜") {
+                    return "<img src='/static/img/emojis/54.png' style='margin-bottom: 3px' width='20px'>";
+                } else if (content === "难过") {
+                    return "<img src='/static/img/emojis/55.png' style='margin-bottom: 3px' width='20px'>";
+                } else if (content === "撇嘴") {
+                    return "<img src='/static/img/emojis/56.png' style='margin-bottom: 3px' width='20px'>";
+                } else if (content === "抓狂") {
+                    return "<img src='/static/img/emojis/57.png' style='margin-bottom: 3px' width='20px'>";
+                } else if (content === "生气") {
+                    return "<img src='/static/img/emojis/58.png' style='margin-bottom: 3px' width='20px'>";
+                } else if (content === "爱心") {
+                    return "<img src='/static/img/emojis/59.png' style='margin-bottom: 3px' width='20px'>";
+                } else if (content === "胜利") {
+                    return "<img src='/static/img/emojis/60.png' style='margin-bottom: 3px' width='20px'>";
+                } else if (content === "加油") {
+                    return "<img src='/static/img/emojis/61.png' style='margin-bottom: 3px' width='20px'>";
+                } else if (content === "抱拳") {
+                    return "<img src='/static/img/emojis/62.png' style='margin-bottom: 3px' width='20px'>";
+                } else if (content === "保佑") {
+                    return "<img src='/static/img/emojis/63.png' style='margin-bottom: 3px' width='20px'>";
+                } else if (content === "厉害") {
+                    return "<img src='/static/img/emojis/64.png' style='margin-bottom: 3px' width='20px'>";
+                } else if (content === "拥抱") {
+                    return "<img src='/static/img/emojis/65.png' style='margin-bottom: 3px' width='20px'>";
+                } else if (content === "派蒙") {
+                    return "<img src='/static/img/emojis/66.png' style='margin-bottom: 3px' width='20px'>";
+                } else {
+                    return match;
+                }
+            })
+        }
+    </script>
+    </body>
+    </html>
+{{end}}

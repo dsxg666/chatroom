@@ -1,0 +1,38 @@
+{{define "main/demo.html"}}
+    <!doctype html>
+    <html lang="zh-CN">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>demo</title>
+        <link rel="shortcut icon" href="/static/img/favicon.ico">
+        <link href="/static/css/bootstrap.min.css" rel="stylesheet">
+    </head>
+    <body>
+    <button id="showEmojis" class="btn btn-primary">显示表情</button>
+
+    <!-- 表情框 -->
+    <div id="emojiContainer" class="position-absolute" style="display: none;">
+        <div class="card">
+            <div class="card-body">
+                <!-- 在这里放置你的表情内容 -->
+                <span>😀</span>
+                <span>😁</span>
+                <span>😎</span>
+                <!-- 添加更多表情 -->
+            </div>
+        </div>
+    </div>
+    <script src="/static/js/jquery-3.7.0.min.js"></script>
+    <script src="/static/js/bootstrap.bundle.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            // 当按钮被点击时，显示/隐藏表情框
+            $('#showEmojis').click(function() {
+                $('#emojiContainer').toggle();
+            });
+        });
+    </script>
+    </body>
+    </html>
+{{end}}

@@ -89,7 +89,6 @@ func (c *Client) WriteMsg() {
 		case msgObj, ok := <-c.Send:
 			c.Conn.SetWriteDeadline(time.Now().Add(writeWait))
 			if !ok {
-				// The Hub closed the channel.
 				c.Conn.WriteMessage(websocket.CloseMessage, []byte{})
 				return
 			}
@@ -130,7 +129,6 @@ func ServeWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 	}
 	client := &Client{Hub: hub, Conn: conn, Send: make(chan *Message), Host: r.URL.Query().Get("account")}
 	client.Hub.Register <- client
-	// Allow collection of memory referenced by the caller by doing all work in new goroutines.
 	go client.WriteMsg()
 	go client.ReadMsg()
 }

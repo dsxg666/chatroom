@@ -1,21 +1,16 @@
 package ws
 
-// Hub maintains the set of active Clients and broadcasts messages to the Clients.
 type Hub struct {
-	// Registered Clients.
 	Clients map[*Client]bool
 
 	ClientsMap map[string]*Client
 
-	// Inbound messages from the Clients.
 	Broadcast chan *Message
 
 	Private chan *Message
 
-	// Register requests from the Clients.
 	Register chan *Client
 
-	// Unregister requests from Clients.
 	Unregister chan *Client
 }
 

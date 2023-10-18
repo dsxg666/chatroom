@@ -4,9 +4,6 @@
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-        <meta http-equiv="Pragma" content="no-cache">
-        <meta http-equiv="Expires" content="0">
         <title>dsxg聊天室</title>
         <link rel="shortcut icon" href="/static/img/favicon.ico">
         <link href="/static/css/bootstrap.min.css" rel="stylesheet">
@@ -386,19 +383,22 @@
         if (window["WebSocket"]) {
             conn = new WebSocket("ws://" + document.location.host + "/ws?account=" + acc);
             conn.onmessage = function (evt) {
-                let msgObj = JSON.parse(evt.data);
-                console.log(msgObj);
-                if (msgObj.Type === "Message") {
-                    let temp = $(".boxAlreadyShow").is('*');
-                    if (temp) {
-                        if (acc === msgObj.Sender) {
-                            let msgTemp = msgObj.Message;
-                            let msg = emojiShowFunc(msgTemp);
-                            if (msgTemp.length > 5) {
-                                msgTemp = msgTemp.substring(0, 5) + "...";
-                            }
-                            let down = {{.username}} +" | " + msgObj.Time
-                            let msgRightHtml = `
+                if (evt.data === "heartbeat") {
+                    console.log(evt.data);
+                } else {
+                    let msgObj = JSON.parse(evt.data);
+                    console.log(msgObj);
+                    if (msgObj.Type === "Message") {
+                        let temp = $(".boxAlreadyShow").is('*');
+                        if (temp) {
+                            if (acc === msgObj.Sender) {
+                                let msgTemp = msgObj.Message;
+                                let msg = emojiShowFunc(msgTemp);
+                                if (msgTemp.length > 5) {
+                                    msgTemp = msgTemp.substring(0, 5) + "...";
+                                }
+                                let down = {{.username}} +" | " + msgObj.Time
+                                let msgRightHtml = `
                        <li class="d-flex flex-row justify-content-end">
                             <div>
                                 <p class="small p-2 me-3 mb-1 text-black rounded-3" style="background-color: rgb(169, 234, 122)">
@@ -411,19 +411,19 @@
                             <img src="${msgObj.SenderImg}" style="width: 45px; height: 45px;">
                        </li>
             `;
-                            msgFrame.append(msgRightHtml);
-                            msgFrame.scrollTop(msgFrame.prop("scrollHeight"));
-                            $("#time" + msgObj.Receiver).text(msgObj.Time);
-                            $("#msg" + msgObj.Receiver).text(msgTemp);
-                        } else if (acc === msgObj.Receiver && msgFrame.attr("data-remark") === msgObj.Sender || "WorldRoom" === msgFrame.attr("data-remark") && msgObj.Receiver === "WorldRoom") {
-                            // 如果当前页面是发送者的页面，且正在该窗口
-                            let msgTemp = msgObj.Message;
-                            let msg = emojiShowFunc(msgTemp);
-                            if (msgTemp.length > 5) {
-                                msgTemp = msgTemp.substring(0, 5) + "...";
-                            }
-                            let down = msgObj.SenderUsername + " | " + msgObj.Time
-                            let msgLeftHtml = `
+                                msgFrame.append(msgRightHtml);
+                                msgFrame.scrollTop(msgFrame.prop("scrollHeight"));
+                                $("#time" + msgObj.Receiver).text(msgObj.Time);
+                                $("#msg" + msgObj.Receiver).text(msgTemp);
+                            } else if (acc === msgObj.Receiver && msgFrame.attr("data-remark") === msgObj.Sender || "WorldRoom" === msgFrame.attr("data-remark") && msgObj.Receiver === "WorldRoom") {
+                                // 如果当前页面是发送者的页面，且正在该窗口
+                                let msgTemp = msgObj.Message;
+                                let msg = emojiShowFunc(msgTemp);
+                                if (msgTemp.length > 5) {
+                                    msgTemp = msgTemp.substring(0, 5) + "...";
+                                }
+                                let down = msgObj.SenderUsername + " | " + msgObj.Time
+                                let msgLeftHtml = `
                         <li class="d-flex flex-row justify-content-start">
                             <img src="${msgObj.SenderImg}" style="width: 45px; height: 45px;">
                             <div>
@@ -436,46 +436,46 @@
                             </div>
                         </li>
             `;
-                            msgFrame.append(msgLeftHtml);
-                            msgFrame.scrollTop(msgFrame.prop("scrollHeight"));
-                            if (msgObj.Receiver === "WorldRoom") {
-                                $("#timeWorldRoom").text(msgObj.time);
-                                $("#msgWorldRoom").text(msgTemp);
-                            } else {
-                                $("#time" + msgObj.Sender).text(msgObj.Time);
-                                $("#msg" + msgObj.Sender).text(msgTemp);
-                            }
-                        } else if ("WorldRoom" !== msgFrame.attr("data-remark") && msgObj.Receiver === "WorldRoom") {
-                            // 收到世界群聊消息时不在该窗口
-                            document.getElementById('ringtone').play();
-                            let unreadNum = $("#unreadNumWorldRoom");
-                            if (unreadNum.text() === "") {
-                                unreadNum.text(1);
-                            } else {
-                                let str = unreadNum.text();
-                                let num = parseInt(str) + 1;
-                                unreadNum.text(num);
-                            }
-                        } else if (acc === msgObj.Receiver && msgFrame.attr("data-remark") !== msgObj.Sender) {
-                            // 收到好友消息时不在该窗口
-                            document.getElementById('ringtone').play();
-                            let unreadNum = $("#unreadNum" + msgObj.Sender);
-                            if (unreadNum.text() === "") {
-                                unreadNum.text(1);
-                            } else {
-                                let str = unreadNum.text();
-                                let num = parseInt(str) + 1;
-                                unreadNum.text(num);
+                                msgFrame.append(msgLeftHtml);
+                                msgFrame.scrollTop(msgFrame.prop("scrollHeight"));
+                                if (msgObj.Receiver === "WorldRoom") {
+                                    $("#timeWorldRoom").text(msgObj.time);
+                                    $("#msgWorldRoom").text(msgTemp);
+                                } else {
+                                    $("#time" + msgObj.Sender).text(msgObj.Time);
+                                    $("#msg" + msgObj.Sender).text(msgTemp);
+                                }
+                            } else if ("WorldRoom" !== msgFrame.attr("data-remark") && msgObj.Receiver === "WorldRoom") {
+                                // 收到世界群聊消息时不在该窗口
+                                document.getElementById('ringtone').play();
+                                let unreadNum = $("#unreadNumWorldRoom");
+                                if (unreadNum.text() === "") {
+                                    unreadNum.text(1);
+                                } else {
+                                    let str = unreadNum.text();
+                                    let num = parseInt(str) + 1;
+                                    unreadNum.text(num);
+                                }
+                            } else if (acc === msgObj.Receiver && msgFrame.attr("data-remark") !== msgObj.Sender) {
+                                // 收到好友消息时不在该窗口
+                                document.getElementById('ringtone').play();
+                                let unreadNum = $("#unreadNum" + msgObj.Sender);
+                                if (unreadNum.text() === "") {
+                                    unreadNum.text(1);
+                                } else {
+                                    let str = unreadNum.text();
+                                    let num = parseInt(str) + 1;
+                                    unreadNum.text(num);
+                                }
                             }
                         }
-                    }
-                } else if (msgObj.Type === "FriendRequest") {
-                    document.getElementById('ringtone').play();
-                    $.message({
-                        message: '您有新的好友请求。',
-                        type: 'success'
-                    });
-                    let htmlTemp = `
+                    } else if (msgObj.Type === "FriendRequest") {
+                        document.getElementById('ringtone').play();
+                        $.message({
+                            message: '您有新的好友请求。',
+                            type: 'success'
+                        });
+                        let htmlTemp = `
                     <li class="p-2">
                                         <div id="info"
                                              style="padding: 10px;border: 1px solid darkgray;border-radius: 15px;">
@@ -501,10 +501,10 @@
                                         </div>
                                     </li>
                     `;
-                    $("#infoPageUl").append(htmlTemp);
-                } else if (msgObj.Type === "AddFriend") {
-                    if (acc === msgObj.Sender) {
-                        let htmlTemp = `
+                        $("#infoPageUl").append(htmlTemp);
+                    } else if (msgObj.Type === "AddFriend") {
+                        if (acc === msgObj.Sender) {
+                            let htmlTemp = `
                     <li class="p-2" onclick="showMsg(${msgObj.Receiver})">
                                         <div class="d-flex justify-content-between">
                                             <div class="d-flex flex-row">
@@ -521,9 +521,9 @@
                                         </div>
                                     </li>
                     `;
-                        $("#friendPageUl").append(htmlTemp);
-                    } else if (acc === msgObj.Receiver) {
-                        let htmlTemp = `
+                            $("#friendPageUl").append(htmlTemp);
+                        } else if (acc === msgObj.Receiver) {
+                            let htmlTemp = `
                     <li class="p-2" onclick="showMsg(${msgObj.Sender})">
                                         <div class="d-flex justify-content-between">
                                             <div class="d-flex flex-row">
@@ -540,9 +540,19 @@
                                         </div>
                                     </li>
                     `;
-                        $("#friendPageUl").append(htmlTemp);
+                            $("#friendPageUl").append(htmlTemp);
+                        }
                     }
                 }
+            };
+            conn.onopen = (event) => {
+                console.log("WebSocket连接已打开:", event);
+            };
+            conn.onclose = (event) => {
+                console.log("WebSocket连接已关闭:", event);
+            };
+            conn.onerror = (event) => {
+                console.error("WebSocket错误:", event);
             };
         }
 

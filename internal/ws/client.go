@@ -83,6 +83,9 @@ func (c *Client) WriteMsg() {
 			if err != nil {
 				return
 			}
+			if msgObj.Sender == c.Host {
+				c.Hub.ClientTime[c] = time.Now()
+			}
 
 			if msgObj.Type == "Message" {
 				senderUser := &db.User{Account: msgObj.Sender}
@@ -117,6 +120,37 @@ func (c *Client) WriteMsg() {
 	}
 }
 
+func (c *Client) CheckClientActivity() {
+	for {
+		// 检查客户端的最后活动时间
+		lastActiveTime, ok := c.Hub.ClientTime[c]
+		if !ok {
+			return
+		}
+		// 如果客户端在一段时间内没有发出任何消息，将其断开连接
+		if time.Since(lastActiveTime) > 300*time.Second {
+			fmt.Printf("用户长时间未活动，断开连接: %s\n", c.Conn.RemoteAddr())
+			c.Hub.Unregister <- c
+			return
+		}
+
+		time.Sleep(360 * time.Second) // 等待一段时间再次检查
+	}
+}
+
+func (c *Client) CheckHeartbeat() {
+	for {
+		// 定时发送心跳消息给所有连接的客户端
+		for client := range c.Hub.Clients {
+			err := client.Conn.WriteMessage(websocket.TextMessage, []byte("heartbeat"))
+			if err != nil {
+				log.Println(err)
+			}
+		}
+		time.Sleep(10 * time.Second)
+	}
+}
+
 // ServeWs handles websocket requests from the peer.
 func ServeWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 	conn, err := upgrader.Upgrade(w, r, nil)
@@ -128,4 +162,6 @@ func ServeWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 	client.Hub.Register <- client
 	go client.WriteMsg()
 	go client.ReadMsg()
+	go client.CheckClientActivity()
+	go client.CheckHeartbeat()
 }

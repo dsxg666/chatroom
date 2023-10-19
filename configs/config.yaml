@@ -1,7 +1,7 @@
 Database:
   DBType: mysql
   UserName: root
-  Password: xxxxx
+  Password: xxxx
   Host: localhost:3306
   DBName: chatroom
   Charset: utf8

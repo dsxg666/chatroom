@@ -1,11 +1,15 @@
 package ws
 
-import "time"
+import (
+	"fmt"
+	"time"
+
+	"github.com/gorilla/websocket"
+)
 
 type Hub struct {
 	Clients       map[*Client]bool
 	ClientsMap    map[string]*Client
-	ClientTime    map[*Client]time.Time
 	Broadcast     chan *Message
 	Private       chan *Message
 	FriendRequest chan *Message
@@ -17,7 +21,6 @@ func NewHub() *Hub {
 	return &Hub{
 		Clients:       make(map[*Client]bool),
 		ClientsMap:    make(map[string]*Client),
-		ClientTime:    make(map[*Client]time.Time),
 		Broadcast:     make(chan *Message),
 		Private:       make(chan *Message),
 		FriendRequest: make(chan *Message),
@@ -32,13 +35,9 @@ func (h *Hub) Run() {
 		case client := <-h.Register:
 			h.Clients[client] = true
 			h.ClientsMap[client.Host] = client
-			h.ClientTime[client] = time.Now()
 		case client := <-h.Unregister:
-			if _, ok := h.Clients[client]; ok {
-				delete(h.Clients, client)
-				delete(h.ClientsMap, client.Host)
-				close(client.Send)
-			}
+			delete(h.Clients, client)
+			delete(h.ClientsMap, client.Host)
 		case msgObj := <-h.Private:
 			client, ok := h.ClientsMap[msgObj.Sender]
 			if ok {
@@ -58,5 +57,19 @@ func (h *Hub) Run() {
 				client.Send <- msgObj
 			}
 		}
+	}
+}
+
+func (h *Hub) HeartbeatCheck() {
+	for {
+		for client := range h.Clients {
+			fmt.Println("发送心跳给账号", client.Host)
+			err := client.Conn.WriteMessage(websocket.TextMessage, []byte("heartbeat"))
+			if err != nil {
+				fmt.Println("发送失败，账号页面已关闭：", err)
+				h.Unregister <- client
+			}
+		}
+		time.Sleep(20 * time.Second)
 	}
 }

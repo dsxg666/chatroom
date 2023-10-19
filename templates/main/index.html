@@ -371,15 +371,15 @@
     <script src='/static/js/CustomEase.min.js'></script>
     <script src='/static/js/huo.js'></script>
     <script>
-        let acc = sessionStorage.getItem('account');
-        let msgBtn = $("#msgBtn");
-        let showEmojis = $('#showEmojis');
-        let emojiContainer = $('#emojiContainer');
-        let inputFrame = $("#inputFrame");
-        let msgFrame = $("#msgFrame");
+        var acc = sessionStorage.getItem('account');// 当前账号
+        var msgBtn = $("#msgBtn");
+        var showEmojis = $('#showEmojis');
+        var emojiContainer = $('#emojiContainer');
+        var inputFrame = $("#inputFrame");
+        var msgFrame = $("#msgFrame");
+        var conn;
     </script>
     <script>
-        let conn;
         if (window["WebSocket"]) {
             conn = new WebSocket("ws://" + document.location.host + "/ws?account=" + acc);
             conn.onmessage = function (evt) {
@@ -546,116 +546,37 @@
                 }
             };
             conn.onopen = (event) => {
-                console.log("WebSocket连接已打开:", event);
+                console.log("WebSocket连接已打开：", event);
             };
             conn.onclose = (event) => {
-                console.log("WebSocket连接已关闭:", event);
+                console.log("WebSocket连接断开：", event);
             };
             conn.onerror = (event) => {
-                console.error("WebSocket错误:", event);
+                console.log("WebSocket错误：", event);
             };
+        } else {
+            alert("对不起，你的浏览器不支持WebSocket，聊天室功能将不会发生作用。");
         }
 
         document.getElementById("inputFrame").addEventListener("keyup", function (event) {
             if (event.key === "Enter") {
-                let message = {
-                    Message: inputFrame.val(),
-                    Sender: acc,
-                    Receiver: msgFrame.attr("data-remark"),
-                    Type: "Message",
-                };
-                conn.send(JSON.stringify(message));
-                this.value = ""; // 清空输入框
+                if (inputFrame.val() === "") {
+
+                } else {
+                    let message = {
+                        Message: inputFrame.val(),
+                        Sender: acc,
+                        Receiver: msgFrame.attr("data-remark"),
+                        Type: "Message",
+                    };
+                    conn.send(JSON.stringify(message));
+                    this.value = "";
+                }
             }
         });
     </script>
+    <script src="/static/js/DealMessage.js"></script>
     <script>
-        function showWorldRoom() {
-            $('#msgPageUl li').each(function () {
-                let id = $(this).attr('id');
-
-                if (id === "liWorldRoom") {
-                    $(this).addClass("boxUsing");
-                } else {
-                    $(this).removeClass("boxUsing");
-                }
-            });
-            $.ajax({
-                url: "/getWorldRoomMsg",
-                method: "post",
-                success: function (response) {
-                    $("#unreadNumWorldRoom").text("");
-                    let msgFrame = $("#msgFrame");
-                    msgFrame.empty();
-
-                    let msgs = response["msgWorldRoom"];
-                    let len = msgs.length;
-                    let imgs = response["imgWorldRoom"];
-                    let names = response["nameWorldRoom"];
-
-                    let originalStr = msgs[len - 1].CreatedAt;
-                    let resArr = originalStr.split("T");
-                    let finalIndex = resArr[1].length - 4;
-                    let finalArr = resArr[0] + " " + resArr[1].substring(0, finalIndex);
-                    let msgHtmlMsg = msgs[len - 1].Message;
-                    if (msgHtmlMsg.length > 5) {
-                        msgHtmlMsg = msgs[len - 1].Message.substring(0, 5) + "...";
-                    }
-                    $("#timeWorldRoom").text(finalArr);
-                    $("#msgWorldRoom").text(msgHtmlMsg);
-                    for (let i = 0; i < len; i++) {
-                        if (msgs[i].SenderAccount === acc) {
-                            let originalStr = msgs[i].CreatedAt;
-                            let resArr = originalStr.split("T");
-                            let finalIndex = resArr[1].length - 4;
-                            let finalStr = names[i] + " | " + resArr[0] + " " + resArr[1].substring(0, finalIndex);
-                            let msgTemp = msgs[i].Message;
-                            let msg = emojiShowFunc(msgTemp);
-                            let msgRightHtml = `
-                       <li class="d-flex flex-row justify-content-end">
-                            <div>
-                                <p class="small p-2 me-3 mb-1 text-black rounded-3" style="background-color: rgb(169, 234, 122)">
-                                    ${msg}
-                                </p>
-                                <p class="small me-3 mb-3 rounded-3 text-muted">
-                                    ${finalStr}
-                                </p>
-                            </div>
-                            <img src="${imgs[i]}" style="width: 45px;height: 45px;border-radius: 8px;user-select: none">
-                        </li>
-            `;
-                            msgFrame.append(msgRightHtml);
-                        } else {
-                            let originalStr = msgs[i].CreatedAt;
-                            let resArr = originalStr.split("T");
-                            let finalIndex = resArr[1].length - 4;
-                            let finalStr = names[i] + " | " + resArr[0] + " " + resArr[1].substring(0, finalIndex);
-                            let msgTemp = msgs[i].Message;
-                            let msg = emojiShowFunc(msgTemp);
-                            let msgLeftHtml = `
-                        <li class="d-flex flex-row justify-content-start">
-                            <img src="${imgs[i]}" style="width: 45px;height: 45px;border-radius: 8px;user-select: none">
-                            <div>
-                                <p class="small p-2 ms-3 mb-1 text-black rounded-3" style="background-color: lightblue;">
-                                    ${msg}
-                                </p>
-                                <p class="small ms-3 mb-3 rounded-3 text-muted float-end">
-                                    ${finalStr}
-                                </p>
-                            </div>
-                        </li>
-            `;
-                            msgFrame.append(msgLeftHtml);
-                        }
-                    }
-                    document.getElementById("editFrame").style.display = "block";
-                    msgFrame.scrollTop(msgFrame.prop("scrollHeight"));
-                    msgFrame.attr("data-remark", "WorldRoom");
-                    $("#liWorldRoom").addClass("boxAlreadyShow");
-                }
-            })
-        }
-
         $("#quit").click(() => {
             sessionStorage.clear();
             window.location.href = "/login"
@@ -710,208 +631,6 @@
                 },
             });
         })
-
-        function showMsg(receiver) {
-            let temp = $("#li" + receiver).is('*');
-            if (!temp) {
-                showPage('msgPage');
-                msgBtn.addClass('using');
-                $('#friendBtn, #infoBtn').removeClass('using');
-                $.ajax({
-                    url: "/getChatMsg",
-                    method: "post",
-                    data: {
-                        "sender": acc,
-                        "receiver": receiver,
-                    },
-                    success: function (response) {
-                        let msgFrame = $("#msgFrame");
-                        msgFrame.empty();
-                        let msgs = response["msgs"];
-                        let len = msgs.length;
-                        let originalStr = msgs[len - 1].CreatedAt;
-                        let resArr = originalStr.split("T");
-                        let finalIndex = resArr[1].length - 4;
-                        let finalArr = resArr[0] + " " + resArr[1].substring(0, finalIndex);
-                        let msgHtmlMsg = msgs[len - 1].Message;
-                        if (msgHtmlMsg.length > 5) {
-                            msgHtmlMsg = msgs[len - 1].Message.substring(0, 5) + "...";
-                        }
-                        let boxSpe = "li" + receiver;
-                        let msgSpe = "msg" + receiver;
-                        let timeSpe = "time" + receiver;
-                        let unreadSpe = "unreadNum" + receiver;
-                        let msgHtml = `
-<li id="${boxSpe}" class="p-2 boxAlreadyShow" style="border-radius: 10px" onclick="showMsg2(${receiver})">
-    <div class="d-flex justify-content-between">
-        <div class="d-flex flex-row">
-            <div>
-                <img src="${response["receiverImg"]}" alt="avatar" class="d-flex align-self-center me-3" style="width: 50px;height: 50px;border-radius: 8px;user-select: none">
-            </div>
-            <div class="pt-1">
-                <p class="fw-bold mb-0">${response["receiverUsername"]}</p>
-                <p id="${msgSpe}" class="text-muted">${msgHtmlMsg}</p>
-            </div>
-        </div>
-        <div class="pt-1">
-            <p class="small text-muted mb-1" id="${timeSpe}">${finalArr}</p>
-            <span id="${unreadSpe}" class="badge bg-danger rounded-pill float-end"></span>
-        </div>
-    </div>
-</li>
-            `;
-                        $("#msgPageUl").append(msgHtml);
-                        for (let i = 0; i < len; i++) {
-                            if (msgs[i].SenderAccount === acc && msgs[i].ReceiverAccount === receiver) {
-                                let originalStr = msgs[i].CreatedAt;
-                                let resArr = originalStr.split("T");
-                                let finalIndex = resArr[1].length - 4;
-                                let finalArr = response["senderUsername"] + " | " + resArr[0] + " " + resArr[1].substring(0, finalIndex);
-                                let msgTemp = msgs[i].Message;
-                                let msg = emojiShowFunc(msgTemp);
-                                let msgRightHtml = `
-                       <li class="d-flex flex-row justify-content-end">
-                            <div>
-                                <p class="small p-2 me-3 mb-1 text-black rounded-3" style="background-color: rgb(169, 234, 122)">
-                                    ${msg}
-                                </p>
-                                <p class="small me-3 mb-3 rounded-3 text-muted">
-                                    ${finalArr}
-                                </p>
-                            </div>
-                            <img src="${response["senderImg"]}" style="width: 45px;height: 45px;border-radius: 8px;user-select: none">
-                        </li>
-            `;
-                                msgFrame.append(msgRightHtml);
-                            } else if (msgs[i].SenderAccount === receiver && msgs[i].ReceiverAccount === acc) {
-                                let originalStr = msgs[i].CreatedAt;
-                                let resArr = originalStr.split("T");
-                                let finalIndex = resArr[1].length - 4;
-                                let finalArr = response["receiverUsername"] + " | " + resArr[0] + " " + resArr[1].substring(0, finalIndex);
-                                let msgTemp = msgs[i].Message;
-                                let msg = emojiShowFunc(msgTemp);
-                                let msgLeftHtml = `
-                        <li class="d-flex flex-row justify-content-start">
-                            <img src="${response["receiverImg"]}" style="width: 45px;height: 45px;border-radius: 8px;user-select: none">
-                            <div>
-                                <p class="small p-2 ms-3 mb-1 text-black rounded-3" style="background-color: lightblue;">
-                                    ${msg}
-                                </p>
-                                <p class="small ms-3 mb-3 rounded-3 text-muted float-end">
-                                    ${finalArr}
-                                </p>
-                            </div>
-                        </li>
-            `;
-                                msgFrame.append(msgLeftHtml);
-                            }
-                        }
-                        document.getElementById("editFrame").style.display = "block";
-                        msgFrame.scrollTop(msgFrame.prop("scrollHeight"));
-                        msgFrame.attr("data-remark", receiver);
-                        $('#msgPageUl li').each(function () {
-                            let id = $(this).attr('id');
-
-                            if (id === "li" + receiver) {
-                                $(this).addClass("boxUsing");
-                            } else {
-                                $(this).removeClass("boxUsing");
-                            }
-                        });
-                    }
-                });
-            } else {
-                showPage('msgPage');
-                msgBtn.addClass('using');
-                $('#friendBtn, #groupBtn, #infoBtn').removeClass('using');
-            }
-        }
-
-        function showMsg2(receiver) {
-            let receiverStr = String(receiver);
-            $('#msgPageUl li').each(function () {
-                let id = $(this).attr('id');
-
-                if (id === "li" + receiverStr) {
-                    $(this).addClass("boxUsing");
-                } else {
-                    $(this).removeClass("boxUsing");
-                }
-            });
-            $.ajax({
-                url: "/getChatMsg",
-                method: "post",
-                data: {
-                    "sender": acc,
-                    "receiver": receiverStr,
-                },
-                success: function (response) {
-                    $("#unreadNum"+receiverStr).text("");
-                    let msgFrame = $("#msgFrame");
-                    msgFrame.empty();
-                    let msgs = response["msgs"];
-                    let len = msgs.length;
-                    let originalStr = msgs[len - 1].CreatedAt;
-                    let resArr = originalStr.split("T");
-                    let finalIndex = resArr[1].length - 4;
-                    let finalArr = resArr[0] + " " + resArr[1].substring(0, finalIndex);
-                    let msgHtmlMsg = msgs[len - 1].Message;
-                    if (msgHtmlMsg.length > 5) {
-                        msgHtmlMsg = msgs[len - 1].Message.substring(0, 5) + "...";
-                    }
-                    $("#time" + receiverStr).text(finalArr);
-                    $("#msg" + receiverStr).text(msgHtmlMsg);
-                    for (let i = 0; i < len; i++) {
-                        if (msgs[i].SenderAccount === acc && msgs[i].ReceiverAccount === receiverStr) {
-                            let originalStr = msgs[i].CreatedAt;
-                            let resArr = originalStr.split("T");
-                            let finalIndex = resArr[1].length - 4;
-                            let finalArr = response["senderUsername"] + " | " + resArr[0] + " " + resArr[1].substring(0, finalIndex);
-                            let msgTemp = msgs[i].Message;
-                            let msg = emojiShowFunc(msgTemp);
-                            let msgRightHtml = `
-                       <li class="d-flex flex-row justify-content-end">
-                            <div>
-                                <p class="small p-2 me-3 mb-1 text-black rounded-3" style="background-color: rgb(169, 234, 122)">
-                                    ${msg}
-                                </p>
-                                <p class="small me-3 mb-3 rounded-3 text-muted">
-                                    ${finalArr}
-                                </p>
-                            </div>
-                            <img src="${response["senderImg"]}" style="width: 45px;height: 45px;border-radius: 8px;user-select: none">
-                        </li>
-            `;
-                            msgFrame.append(msgRightHtml);
-                        } else if (msgs[i].SenderAccount === receiverStr && msgs[i].ReceiverAccount === acc) {
-                            let originalStr = msgs[i].CreatedAt;
-                            let resArr = originalStr.split("T");
-                            let finalIndex = resArr[1].length - 4;
-                            let finalArr = response["receiverUsername"] + " | " + resArr[0] + " " + resArr[1].substring(0, finalIndex);
-                            let msgTemp = msgs[i].Message;
-                            let msg = emojiShowFunc(msgTemp);
-                            let msgLeftHtml = `
-                        <li class="d-flex flex-row justify-content-start">
-                            <img src="${response["receiverImg"]}" style="width: 45px;height: 45px;border-radius: 8px;user-select: none">
-                            <div>
-                                <p class="small p-2 ms-3 mb-1 text-black rounded-3" style="background-color: lightblue;">
-                                    ${msg}
-                                </p>
-                                <p class="small ms-3 mb-3 rounded-3 text-muted float-end">
-                                    ${finalArr}
-                                </p>
-                            </div>
-                        </li>
-            `;
-                            msgFrame.append(msgLeftHtml);
-                        }
-                    }
-                    document.getElementById("editFrame").style.display = "block";
-                    msgFrame.scrollTop(msgFrame.prop("scrollHeight"));
-                    msgFrame.attr("data-remark", receiverStr);
-                }
-            });
-        }
 
         // msgFrame.on("scroll", function() {
         //     let scrollPosition = msgFrame.scrollTop();
@@ -1054,169 +773,8 @@
                 $('#msgPage, #friendPage').removeClass('active show');
             }
         }
-
-        showEmojis.click(function (event) {
-            event.stopPropagation();
-            emojiContainer.toggle();
-            let buttonPosition = showEmojis.offset();
-            emojiContainer.css({
-                top: buttonPosition.top - emojiContainer.height() - 10,
-                left: buttonPosition.left
-            });
-        });
-
-        $(document).click(function (event) {
-            if (!emojiContainer.is(event.target) && !showEmojis.is(event.target)) {
-                emojiContainer.hide();
-            }
-        });
-
-        emojiContainer.on('click', '.emoji', function () {
-            let emoji = $(this).attr('alt');
-            inputFrame.val(inputFrame.val() + emoji);
-            inputFrame.focus();
-        });
-
-        function emojiShowFunc(str) {
-            return str.replace(/\[([^\]]+)\]/g, (match, content) => {
-                if (content === "脱单doge") {
-                    return "<img src='/static/img/emojis/1.png' style='margin-bottom: 3px' width='20px'>";
-                } else if (content === "微笑") {
-                    return "<img src='/static/img/emojis/2.png' style='margin-bottom: 3px' width='20px'>";
-                } else if (content === "口罩") {
-                    return "<img src='/static/img/emojis/3.png' style='margin-bottom: 3px' width='20px'>";
-                } else if (content === "doge") {
-                    return "<img src='/static/img/emojis/4.png' style='margin-bottom: 3px' width='20px'>";
-                } else if (content === "妙啊") {
-                    return "<img src='/static/img/emojis/5.png' style='margin-bottom: 3px' width='20px'>";
-                } else if (content === "OK") {
-                    return "<img src='/static/img/emojis/6.png' style='margin-bottom: 3px' width='20px'>";
-                } else if (content === "星星眼") {
-                    return "<img src='/static/img/emojis/7.png' style='margin-bottom: 3px' width='20px'>";
-                } else if (content === "辣眼睛") {
-                    return "<img src='/static/img/emojis/8.png' style='margin-bottom: 3px' width='20px'>";
-                } else if (content === "吃瓜") {
-                    return "<img src='/static/img/emojis/9.png' style='margin-bottom: 3px' width='20px'>";
-                } else if (content === "滑稽") {
-                    return "<img src='/static/img/emojis/10.png' style='margin-bottom: 3px' width='20px'>";
-                } else if (content === "呲牙") {
-                    return "<img src='/static/img/emojis/11.png' style='margin-bottom: 3px' width='20px'>";
-                } else if (content === "打call") {
-                    return "<img src='/static/img/emojis/12.png' style='margin-bottom: 3px' width='20px'>";
-                } else if (content === "歪嘴") {
-                    return "<img src='/static/img/emojis/13.png' style='margin-bottom: 3px' width='20px'>";
-                } else if (content === "调皮") {
-                    return "<img src='/static/img/emojis/14.png' style='margin-bottom: 3px' width='20px'>";
-                } else if (content === "嗑瓜子") {
-                    return "<img src='/static/img/emojis/15.png' style='margin-bottom: 3px' width='20px'>";
-                } else if (content === "哭笑") {
-                    return "<img src='/static/img/emojis/16.png' style='margin-bottom: 3px' width='20px'>";
-                } else if (content === "脸红") {
-                    return "<img src='/static/img/emojis/17.png' style='margin-bottom: 3px' width='20px'>";
-                } else if (content === "给心心") {
-                    return "<img src='/static/img/emojis/18.png' style='margin-bottom: 3px' width='20px'>";
-                } else if (content === "嘟嘟") {
-                    return "<img src='/static/img/emojis/19.png' style='margin-bottom: 3px' width='20px'>";
-                } else if (content === "哦呼") {
-                    return "<img src='/static/img/emojis/20.png' style='margin-bottom: 3px' width='20px'>";
-                } else if (content === "喜欢") {
-                    return "<img src='/static/img/emojis/21.png' style='margin-bottom: 3px' width='20px'>";
-                } else if (content === "酸了") {
-                    return "<img src='/static/img/emojis/22.png' style='margin-bottom: 3px' width='20px'>";
-                } else if (content === "嫌弃") {
-                    return "<img src='/static/img/emojis/23.png' style='margin-bottom: 3px' width='20px'>";
-                } else if (content === "害羞") {
-                    return "<img src='/static/img/emojis/24.png' style='margin-bottom: 3px' width='20px'>";
-                } else if (content === "大哭") {
-                    return "<img src='/static/img/emojis/25.png' style='margin-bottom: 3px' width='20px'>";
-                } else if (content === "疑惑") {
-                    return "<img src='/static/img/emojis/26.png' style='margin-bottom: 3px' width='20px'>";
-                } else if (content === "喜极而泣") {
-                    return "<img src='/static/img/emojis/27.png' style='margin-bottom: 3px' width='20px'>";
-                } else if (content === "笑") {
-                    return "<img src='/static/img/emojis/28.png' style='margin-bottom: 3px' width='20px'>";
-                } else if (content === "偷笑") {
-                    return "<img src='/static/img/emojis/29.png' style='margin-bottom: 3px' width='20px'>";
-                } else if (content === "惊讶") {
-                    return "<img src='/static/img/emojis/30.png' style='margin-bottom: 3px' width='20px'>";
-                } else if (content === "捂脸") {
-                    return "<img src='/static/img/emojis/31.png' style='margin-bottom: 3px' width='20px'>";
-                } else if (content === "阴险") {
-                    return "<img src='/static/img/emojis/32.png' style='margin-bottom: 3px' width='20px'>";
-                } else if (content === "呆") {
-                    return "<img src='/static/img/emojis/33.png' style='margin-bottom: 3px' width='20px'>";
-                } else if (content === "抠鼻") {
-                    return "<img src='/static/img/emojis/34.png' style='margin-bottom: 3px' width='20px'>";
-                } else if (content === "大笑") {
-                    return "<img src='/static/img/emojis/35.png' style='margin-bottom: 3px' width='20px'>";
-                } else if (content === "惊喜") {
-                    return "<img src='/static/img/emojis/36.png' style='margin-bottom: 3px' width='20px'>";
-                } else if (content === "无语") {
-                    return "<img src='/static/img/emojis/37.png' style='margin-bottom: 3px' width='20px'>";
-                } else if (content === "点赞") {
-                    return "<img src='/static/img/emojis/38.png' style='margin-bottom: 3px' width='20px'>";
-                } else if (content === "鼓掌") {
-                    return "<img src='/static/img/emojis/39.png' style='margin-bottom: 3px' width='20px'>";
-                } else if (content === "尴尬") {
-                    return "<img src='/static/img/emojis/40.png' style='margin-bottom: 3px' width='20px'>";
-                } else if (content === "灵魂出窍") {
-                    return "<img src='/static/img/emojis/41.png' style='margin-bottom: 3px' width='20px'>";
-                } else if (content === "委屈") {
-                    return "<img src='/static/img/emojis/42.png' style='margin-bottom: 3px' width='20px'>";
-                } else if (content === "傲娇") {
-                    return "<img src='/static/img/emojis/43.png' style='margin-bottom: 3px' width='20px'>";
-                } else if (content === "疼") {
-                    return "<img src='/static/img/emojis/44.png' style='margin-bottom: 3px' width='20px'>";
-                } else if (content === "冷") {
-                    return "<img src='/static/img/emojis/45.png' style='margin-bottom: 3px' width='20px'>";
-                } else if (content === "热") {
-                    return "<img src='/static/img/emojis/46.png' style='margin-bottom: 3px' width='20px'>";
-                } else if (content === "生病") {
-                    return "<img src='/static/img/emojis/47.png' style='margin-bottom: 3px' width='20px'>";
-                } else if (content === "捂眼") {
-                    return "<img src='/static/img/emojis/48.png' style='margin-bottom: 3px' width='20px'>";
-                } else if (content === "嘘声") {
-                    return "<img src='/static/img/emojis/49.png' style='margin-bottom: 3px' width='20px'>";
-                } else if (content === "思考") {
-                    return "<img src='/static/img/emojis/50.png' style='margin-bottom: 3px' width='20px'>";
-                } else if (content === "翻白眼") {
-                    return "<img src='/static/img/emojis/51.png' style='margin-bottom: 3px' width='20px'>";
-                } else if (content === "哈欠") {
-                    return "<img src='/static/img/emojis/52.png' style='margin-bottom: 3px' width='20px'>";
-                } else if (content === "奋斗") {
-                    return "<img src='/static/img/emojis/53.png' style='margin-bottom: 3px' width='20px'>";
-                } else if (content === "墨镜") {
-                    return "<img src='/static/img/emojis/54.png' style='margin-bottom: 3px' width='20px'>";
-                } else if (content === "难过") {
-                    return "<img src='/static/img/emojis/55.png' style='margin-bottom: 3px' width='20px'>";
-                } else if (content === "撇嘴") {
-                    return "<img src='/static/img/emojis/56.png' style='margin-bottom: 3px' width='20px'>";
-                } else if (content === "抓狂") {
-                    return "<img src='/static/img/emojis/57.png' style='margin-bottom: 3px' width='20px'>";
-                } else if (content === "生气") {
-                    return "<img src='/static/img/emojis/58.png' style='margin-bottom: 3px' width='20px'>";
-                } else if (content === "爱心") {
-                    return "<img src='/static/img/emojis/59.png' style='margin-bottom: 3px' width='20px'>";
-                } else if (content === "胜利") {
-                    return "<img src='/static/img/emojis/60.png' style='margin-bottom: 3px' width='20px'>";
-                } else if (content === "加油") {
-                    return "<img src='/static/img/emojis/61.png' style='margin-bottom: 3px' width='20px'>";
-                } else if (content === "抱拳") {
-                    return "<img src='/static/img/emojis/62.png' style='margin-bottom: 3px' width='20px'>";
-                } else if (content === "保佑") {
-                    return "<img src='/static/img/emojis/63.png' style='margin-bottom: 3px' width='20px'>";
-                } else if (content === "厉害") {
-                    return "<img src='/static/img/emojis/64.png' style='margin-bottom: 3px' width='20px'>";
-                } else if (content === "拥抱") {
-                    return "<img src='/static/img/emojis/65.png' style='margin-bottom: 3px' width='20px'>";
-                } else if (content === "派蒙") {
-                    return "<img src='/static/img/emojis/66.png' style='margin-bottom: 3px' width='20px'>";
-                } else {
-                    return match;
-                }
-            })
-        }
     </script>
+    <script src="/static/js/emoji.js"></script>
     </body>
     </html>
 {{end}}

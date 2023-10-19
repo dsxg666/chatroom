@@ -14,6 +14,7 @@ import (
 
 func init() {
 	wsg.Hub = ws.NewHub()
+	go wsg.Hub.HeartbeatCheck()
 	go wsg.Hub.Run()
 
 	err := setupSetting()

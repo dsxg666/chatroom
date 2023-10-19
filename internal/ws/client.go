@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/dsxg666/chatroom/internal/db"
 	"github.com/gorilla/websocket"
-	"log"
 	"net/http"
 	"time"
 )
@@ -43,7 +42,7 @@ func (c *Client) ReadMsg() {
 		_, message, err := c.Conn.ReadMessage()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				log.Printf("error: %v", err)
+				fmt.Printf("websocket.IsUnexpectedCloseError error: %v\n", err)
 			}
 			break
 		}
@@ -83,9 +82,6 @@ func (c *Client) WriteMsg() {
 			if err != nil {
 				return
 			}
-			if msgObj.Sender == c.Host {
-				c.Hub.ClientTime[c] = time.Now()
-			}
 
 			if msgObj.Type == "Message" {
 				senderUser := &db.User{Account: msgObj.Sender}
@@ -120,48 +116,17 @@ func (c *Client) WriteMsg() {
 	}
 }
 
-func (c *Client) CheckClientActivity() {
-	for {
-		// 检查客户端的最后活动时间
-		lastActiveTime, ok := c.Hub.ClientTime[c]
-		if !ok {
-			return
-		}
-		// 如果客户端在一段时间内没有发出任何消息，将其断开连接
-		if time.Since(lastActiveTime) > 300*time.Second {
-			fmt.Printf("用户长时间未活动，断开连接: %s\n", c.Conn.RemoteAddr())
-			c.Hub.Unregister <- c
-			return
-		}
-
-		time.Sleep(360 * time.Second) // 等待一段时间再次检查
-	}
-}
-
-func (c *Client) CheckHeartbeat() {
-	for {
-		// 定时发送心跳消息给所有连接的客户端
-		for client := range c.Hub.Clients {
-			err := client.Conn.WriteMessage(websocket.TextMessage, []byte("heartbeat"))
-			if err != nil {
-				log.Println(err)
-			}
-		}
-		time.Sleep(10 * time.Second)
-	}
-}
-
 // ServeWs handles websocket requests from the peer.
 func ServeWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
+	acc := r.URL.Query().Get("account")
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Println(err)
+		fmt.Println("upgrader.Upgrade err:", err)
 		return
 	}
-	client := &Client{Hub: hub, Conn: conn, Send: make(chan *Message), Host: r.URL.Query().Get("account")}
+	fmt.Printf("用户 %s 进入\n", acc)
+	client := &Client{Hub: hub, Conn: conn, Send: make(chan *Message), Host: acc}
 	client.Hub.Register <- client
 	go client.WriteMsg()
 	go client.ReadMsg()
-	go client.CheckClientActivity()
-	go client.CheckHeartbeat()
 }

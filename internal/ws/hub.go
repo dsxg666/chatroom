@@ -37,16 +37,11 @@ func (h *Hub) Run() {
 			h.ClientsMap[client.Host] = client
 		case client := <-h.Unregister:
 			delete(h.Clients, client)
-			delete(h.ClientsMap, client.Host)
 		case msgObj := <-h.Private:
-			client, ok := h.ClientsMap[msgObj.Sender]
-			if ok {
-				client.Send <- msgObj
-			}
-			client2, oK2 := h.ClientsMap[msgObj.Receiver]
-			if oK2 {
-				client2.Send <- msgObj
-			}
+			client := h.ClientsMap[msgObj.Sender]
+			client.Send <- msgObj
+			client2 := h.ClientsMap[msgObj.Receiver]
+			client2.Send <- msgObj
 		case msgObj := <-h.Broadcast:
 			for client := range h.Clients {
 				client.Send <- msgObj
@@ -70,6 +65,6 @@ func (h *Hub) HeartbeatCheck() {
 				h.Unregister <- client
 			}
 		}
-		time.Sleep(20 * time.Second)
+		time.Sleep(30 * time.Second)
 	}
 }
